@@ -18,6 +18,7 @@ import Onboarding from './pages/Onboarding'
 import BottomNav from './components/BottomNav'
 import { registerSW, subscribePush, isPushSupported } from './hooks/usePush'
 import Assistente from './pages/Assistente'
+import GuideModal from './components/GuideModal'
 
 export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'storico-ordini' | 'impostazioni' | 'food-cost'
 
@@ -189,6 +190,8 @@ export default function App() {
         {navPages.includes(page) && (
           <BottomNav active={page} onChange={setPage} badge={badgeNotifiche} />
         )}
+
+        <GuideModal ristoranteId={ristoranteId} onNavigate={navigate} />
       </div>
     </RistoranteContext.Provider>
   )
