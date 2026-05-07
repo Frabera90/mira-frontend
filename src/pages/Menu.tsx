@@ -8,10 +8,13 @@ interface Piatto {
   nome: string
   categoria: string | null
   prezzo_vendita: number | null
-  costo_ingredienti: number | null
-  disponibile: boolean
-  stagionale: boolean
-  note_chef: string | null
+  soglia_food_cost_pct: number | null
+  attivo: boolean
+  // dalla view piatti_food_cost
+  costo_ingredienti?: number
+  food_cost_pct?: number
+  margine_euro?: number
+  n_ingredienti?: number
 }
 
 const CATEGORIE = ['Antipasto', 'Primo', 'Secondo', 'Contorno', 'Dolce', 'Vini & Bevande', 'Altro']
@@ -33,28 +36,24 @@ function PiattoModal({
 }) {
   const ristoranteId = useRistorante()
   const isNew = !piatto
-  const [nome, setNome]         = useState(piatto?.nome ?? '')
-  const [cat, setCat]           = useState(piatto?.categoria ?? '')
-  const [prezzo, setPrezzo]     = useState(piatto?.prezzo_vendita != null ? String(piatto.prezzo_vendita) : '')
-  const [costo, setCosto]       = useState(piatto?.costo_ingredienti != null ? String(piatto.costo_ingredienti) : '')
-  const [note, setNote]         = useState(piatto?.note_chef ?? '')
-  const [disp, setDisp]         = useState(piatto?.disponibile ?? true)
-  const [stag, setStag]         = useState(piatto?.stagionale ?? false)
-  const [saving, setSaving]     = useState(false)
-  const [errore, setErrore]     = useState<string | null>(null)
+  const [nome, setNome]       = useState(piatto?.nome ?? '')
+  const [cat, setCat]         = useState(piatto?.categoria ?? '')
+  const [prezzo, setPrezzo]   = useState(piatto?.prezzo_vendita != null ? String(piatto.prezzo_vendita) : '')
+  const [soglia, setSoglia]   = useState(piatto?.soglia_food_cost_pct != null ? String(piatto.soglia_food_cost_pct) : '35')
+  const [attivo, setAttivo]   = useState(piatto?.attivo ?? true)
+  const [saving, setSaving]   = useState(false)
+  const [errore, setErrore]   = useState<string | null>(null)
 
   async function salva() {
     if (!nome.trim()) { setErrore('Il nome è obbligatorio'); return }
     setSaving(true); setErrore(null)
     const payload = {
-      ristorante_id:     ristoranteId,
-      nome:              nome.trim(),
-      categoria:         cat || null,
-      prezzo_vendita:    prezzo ? parseFloat(prezzo) : null,
-      costo_ingredienti: costo  ? parseFloat(costo)  : null,
-      note_chef:         note.trim() || null,
-      disponibile:       disp,
-      stagionale:        stag,
+      ristorante_id:       ristoranteId,
+      nome:                nome.trim(),
+      categoria:           cat || null,
+      prezzo_vendita:      prezzo ? parseFloat(prezzo) : null,
+      soglia_food_cost_pct: soglia ? parseFloat(soglia) : 35,
+      attivo,
     }
     const q = isNew
       ? supabase.from('piatti').insert(payload).select().single()
@@ -71,10 +70,6 @@ function PiattoModal({
     await supabase.from('piatti').delete().eq('id', piatto.id)
     onDeleted?.(piatto.id)
   }
-
-  const margine = prezzo && costo ? parseFloat(prezzo) - parseFloat(costo) : null
-  const pct     = margine != null && parseFloat(prezzo!) > 0
-    ? Math.round((margine / parseFloat(prezzo!)) * 100) : null
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -133,58 +128,30 @@ function PiattoModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-maro mb-1.5">Costo ingredienti (€)</label>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Soglia food cost (%)</label>
             <input
               type="number"
               inputMode="decimal"
-              min="0"
-              step="0.1"
-              value={costo}
-              onChange={e => setCosto(e.target.value)}
-              placeholder="es. 5.50"
+              min="10"
+              max="60"
+              step="1"
+              value={soglia}
+              onChange={e => setSoglia(e.target.value)}
+              placeholder="35"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
             />
           </div>
         </div>
 
-        {margine != null && (
-          <div className={`rounded-xl p-3 text-sm font-medium ${pct! >= 60 ? 'bg-emerald-50 text-emerald-700' : pct! >= 40 ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'}`}>
-            Margine: €{margine.toFixed(2)} — food cost {100 - pct!}%
-            {pct! < 60 && ' ⚠️ food cost alto'}
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <div
+            onClick={() => setAttivo(a => !a)}
+            className={`w-10 h-6 rounded-full transition-colors flex items-center shrink-0 ${attivo ? 'bg-terra' : 'bg-slate-200'}`}
+          >
+            <span className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${attivo ? 'translate-x-4' : ''}`} />
           </div>
-        )}
-
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Note per la cucina</label>
-          <textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="allergie, varianti, note preparazione…"
-            rows={2}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra resize-none"
-          />
-        </div>
-
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <div
-              onClick={() => setDisp(d => !d)}
-              className={`w-10 h-6 rounded-full transition-colors flex items-center ${disp ? 'bg-terra' : 'bg-slate-200'}`}
-            >
-              <span className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${disp ? 'translate-x-4' : ''}`} />
-            </div>
-            <span className="text-sm text-caffe font-medium">Disponibile</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <div
-              onClick={() => setStag(s => !s)}
-              className={`w-10 h-6 rounded-full transition-colors flex items-center ${stag ? 'bg-amber-400' : 'bg-slate-200'}`}
-            >
-              <span className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-1 ${stag ? 'translate-x-4' : ''}`} />
-            </div>
-            <span className="text-sm text-caffe font-medium">Stagionale</span>
-          </label>
-        </div>
+          <span className="text-sm text-caffe font-medium">{attivo ? 'In carta' : 'Non disponibile'}</span>
+        </label>
 
         {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
 
@@ -220,36 +187,36 @@ export default function Menu({ onBack }: Props) {
   const [loading, setLoading] = useState(true)
   const [mostraModal, setMostraModal] = useState(false)
   const [selezionato, setSelezionato] = useState<Piatto | null>(null)
-  const [filtroDisp, setFiltroDisp]   = useState<'tutti' | 'disponibili' | 'non_disponibili'>('tutti')
+  const [filtroAttivo, setFiltroAttivo] = useState<'tutti' | 'in_carta' | 'non_disp'>('tutti')
 
   const carica = useCallback(() => {
     setLoading(true)
+    // Leggi dalla view piatti_food_cost che include costo calcolato
     supabase
-      .from('piatti')
-      .select('id, nome, categoria, prezzo_vendita, costo_ingredienti, disponibile, stagionale, note_chef')
+      .from('piatti_food_cost')
+      .select('id, ristorante_id, nome, categoria, prezzo_vendita, soglia_food_cost_pct, attivo, costo_ingredienti, food_cost_pct, margine_euro, n_ingredienti')
       .eq('ristorante_id', ristoranteId)
       .order('categoria')
       .order('nome')
-      .then(({ data }) => {
-        setPiatti((data as Piatto[]) ?? [])
+      .then(({ data, error }) => {
+        if (!error) setPiatti((data as Piatto[]) ?? [])
         setLoading(false)
       })
   }, [ristoranteId])
 
   useEffect(() => { carica() }, [carica])
 
-  async function toggleDisponibile(p: Piatto) {
-    await supabase.from('piatti').update({ disponibile: !p.disponibile }).eq('id', p.id)
-    setPiatti(prev => prev.map(x => x.id === p.id ? { ...x, disponibile: !x.disponibile } : x))
+  async function toggleAttivo(p: Piatto) {
+    await supabase.from('piatti').update({ attivo: !p.attivo }).eq('id', p.id)
+    setPiatti(prev => prev.map(x => x.id === p.id ? { ...x, attivo: !x.attivo } : x))
   }
 
   const filtrati = piatti.filter(p => {
-    if (filtroDisp === 'disponibili')     return p.disponibile
-    if (filtroDisp === 'non_disponibili') return !p.disponibile
+    if (filtroAttivo === 'in_carta') return p.attivo
+    if (filtroAttivo === 'non_disp') return !p.attivo
     return true
   })
 
-  // Raggruppa per categoria
   const gruppi = filtrati.reduce<Record<string, Piatto[]>>((acc, p) => {
     const cat = p.categoria ?? 'Altro'
     if (!acc[cat]) acc[cat] = []
@@ -260,12 +227,10 @@ export default function Menu({ onBack }: Props) {
   const ordineCategorie = [...CATEGORIE, 'Altro']
   const categoriePresenti = ordineCategorie.filter(c => gruppi[c]?.length)
 
-  const totDisp  = piatti.filter(p => p.disponibile).length
-  const totPiatti = piatti.length
+  const totInCarta = piatti.filter(p => p.attivo).length
 
   return (
     <div className="p-4">
-      {/* Header */}
       <div className="flex justify-between items-center pt-2 mb-5">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 -ml-1">
@@ -274,7 +239,7 @@ export default function Menu({ onBack }: Props) {
           <div>
             <h1 className="text-xl font-semibold text-caffe">Menu</h1>
             {!loading && (
-              <p className="text-sm text-maro mt-0.5">{totDisp} disponibili · {totPiatti} totali</p>
+              <p className="text-sm text-maro mt-0.5">{totInCarta} in carta · {piatti.length} totali</p>
             )}
           </div>
         </div>
@@ -291,18 +256,18 @@ export default function Menu({ onBack }: Props) {
         </div>
       </div>
 
-      {/* Filtro */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+      {/* Filtri */}
+      <div className="flex gap-2 mb-4">
         {[
-          { id: 'tutti',           label: 'Tutti' },
-          { id: 'disponibili',     label: 'In carta' },
-          { id: 'non_disponibili', label: 'Non disponibili' },
+          { id: 'tutti',    label: 'Tutti' },
+          { id: 'in_carta', label: 'In carta' },
+          { id: 'non_disp', label: 'Non disponibili' },
         ].map(f => (
           <button
             key={f.id}
-            onClick={() => setFiltroDisp(f.id as any)}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
-              filtroDisp === f.id
+            onClick={() => setFiltroAttivo(f.id as any)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              filtroAttivo === f.id
                 ? 'bg-caffe text-white border-caffe'
                 : 'bg-white text-slate-500 border-slate-200'
             }`}
@@ -312,7 +277,6 @@ export default function Menu({ onBack }: Props) {
         ))}
       </div>
 
-      {/* Lista */}
       {loading && (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20" />)}
@@ -338,55 +302,58 @@ export default function Menu({ onBack }: Props) {
             <p className="text-xs font-bold text-maro uppercase tracking-widest mb-2 px-1">{cat}</p>
             <div className="space-y-2">
               {gruppi[cat].map(p => {
-                const margine = p.prezzo_vendita != null && p.costo_ingredienti != null
-                  ? p.prezzo_vendita - p.costo_ingredienti : null
-                const foodCostPct = margine != null && p.prezzo_vendita! > 0
-                  ? Math.round((p.costo_ingredienti! / p.prezzo_vendita!) * 100) : null
+                const fc = p.food_cost_pct ?? 0
+                const soglia = p.soglia_food_cost_pct ?? 35
+                const fcOk = fc <= soglia
 
                 return (
                   <div
                     key={p.id}
                     className={`bg-white rounded-2xl p-4 border shadow-sm transition-all ${
-                      p.disponibile ? 'border-slate-100' : 'border-slate-100 opacity-50'
+                      p.attivo ? 'border-slate-100' : 'border-slate-100 opacity-50'
                     }`}
                   >
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-caffe">{p.nome}</p>
-                          {p.stagionale && (
-                            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Stagionale</span>
-                          )}
-                          {!p.disponibile && (
-                            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">Non disponibile</span>
+                          {!p.attivo && (
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">
+                              Non disponibile
+                            </span>
                           )}
                         </div>
-                        {p.note_chef && (
-                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{p.note_chef}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                           {p.prezzo_vendita != null && (
                             <span className="text-sm font-bold text-caffe">€{p.prezzo_vendita.toFixed(2)}</span>
                           )}
-                          {foodCostPct != null && (
+                          {p.n_ingredienti != null && p.n_ingredienti > 0 && (
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                              foodCostPct <= 30 ? 'bg-emerald-50 text-emerald-700'
-                              : foodCostPct <= 40 ? 'bg-amber-50 text-amber-700'
-                              : 'bg-rose-50 text-rose-600'
+                              fcOk
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-rose-50 text-rose-600'
                             }`}>
-                              food cost {foodCostPct}%
+                              FC {fc.toFixed(0)}% {!fcOk && '⚠️'}
                             </span>
+                          )}
+                          {p.margine_euro != null && p.n_ingredienti! > 0 && (
+                            <span className="text-xs text-slate-400">
+                              margine €{p.margine_euro.toFixed(2)}
+                            </span>
+                          )}
+                          {(p.n_ingredienti ?? 0) === 0 && (
+                            <span className="text-xs text-slate-300 italic">nessun ingrediente</span>
                           )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => toggleDisponibile(p)}
+                          onClick={() => toggleAttivo(p)}
                           className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"
-                          title={p.disponibile ? 'Rendi non disponibile' : 'Rendi disponibile'}
+                          title={p.attivo ? 'Rendi non disponibile' : 'Rimetti in carta'}
                         >
-                          {p.disponibile ? <Eye size={15} /> : <EyeOff size={15} />}
+                          {p.attivo ? <Eye size={15} /> : <EyeOff size={15} />}
                         </button>
                         <button
                           onClick={() => { setSelezionato(p); setMostraModal(true) }}
@@ -411,11 +378,7 @@ export default function Menu({ onBack }: Props) {
           onSaved={p => {
             setMostraModal(false)
             setSelezionato(null)
-            setPiatti(prev => {
-              const idx = prev.findIndex(x => x.id === p.id)
-              if (idx >= 0) return prev.map(x => x.id === p.id ? p : x)
-              return [...prev, p]
-            })
+            carica()
           }}
           onDeleted={id => {
             setMostraModal(false)
