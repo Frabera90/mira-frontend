@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   RefreshCw, AlertTriangle, Clock, Users, TrendingUp,
   Package, CalendarDays, Settings, ChefHat, ChevronRight,
-  Camera, ShoppingCart, Send,
+  Camera, ShoppingCart, Send, UtensilsCrossed, Truck,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -294,6 +294,29 @@ export default function Casa({ onNavigate }: CasaProps) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Accesso rapido */}
+      {onNavigate && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+          {[
+            { icon: UtensilsCrossed, label: 'Menu',        page: 'menu',         color: 'bg-terra/10 text-terra' },
+            { icon: Truck,           label: 'Fornitori',   page: 'fornitori',    color: 'bg-indigo-50 text-indigo-600' },
+            { icon: CalendarDays,    label: 'Prenotazioni',page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
+            { icon: ChefHat,         label: 'Food Cost',   page: 'food-cost',    color: 'bg-emerald-50 text-emerald-600' },
+          ].map(({ icon: Icon, label, page, color }) => (
+            <button
+              key={page}
+              onClick={() => onNavigate(page)}
+              className="flex flex-col items-center gap-1.5 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm active:scale-95 transition-transform shrink-0"
+            >
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+                <Icon size={17} />
+              </div>
+              <span className="text-[11px] font-semibold text-caffe whitespace-nowrap">{label}</span>
+            </button>
+          ))}
         </div>
       )}
 
