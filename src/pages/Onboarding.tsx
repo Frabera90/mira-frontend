@@ -95,7 +95,7 @@ function Step1({ onDone }: { onDone: (ristoranteId?: string) => void }) {
           .select('id')
           .single()
         if (error) {
-          setErrore('Errore nella creazione del ristorante. Riprova.')
+          setErrore(error.message)
           setSaving(false)
           return
         }
