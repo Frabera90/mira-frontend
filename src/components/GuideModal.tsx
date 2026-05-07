@@ -210,32 +210,68 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                 <div className="flex gap-2 text-slate-600"><span>🗣️</span><span><strong>Messaggi liberi</strong> — scrivi o manda un vocale al bot</span></div>
               </div>
 
-              <p className="text-xs text-slate-500">Tocca il pulsante → Telegram si apre → premi <strong>START</strong> → collegato automaticamente.</p>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">Tocca il pulsante → Telegram si apre → premi <strong>START</strong> → collegato in automatico.</p>
 
-              <a
-                href={`https://t.me/${BOT}?start=${ristoranteId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#229ED9] text-white font-semibold rounded-xl py-3.5 text-sm"
-              >
-                <ExternalLink size={15} />
-                Collega Telegram — premi START
-              </a>
-
-              {tgSaved ? (
-                <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-4 py-3">
-                  <CheckCircle size={16} className="text-emerald-600 shrink-0" />
-                  <p className="text-sm text-emerald-700 font-medium">Telegram collegato!</p>
-                </div>
-              ) : (
+                {/* Bottone primario — usa button+window.open per evitare problemi iOS PWA */}
                 <button
-                  onClick={verificaTelegram}
-                  disabled={savingTg}
-                  className="w-full border border-slate-200 text-slate-500 rounded-xl py-2.5 text-xs disabled:opacity-50"
+                  onClick={() => window.open(`https://t.me/${BOT}?start=${ristoranteId}`, '_blank')}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold text-white"
+                  style={{ backgroundColor: '#229ED9' }}
                 >
-                  {savingTg ? 'Verifico…' : 'Ho premuto START sul bot ✓'}
+                  <ExternalLink size={15} />
+                  Apri Telegram — premi START
                 </button>
-              )}
+
+                {tgSaved ? (
+                  <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-4 py-3">
+                    <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                    <p className="text-sm text-emerald-700 font-medium">Telegram collegato!</p>
+                  </div>
+                ) : (
+                  <button
+                    onClick={verificaTelegram}
+                    disabled={savingTg}
+                    className="w-full border border-slate-200 text-slate-500 rounded-xl py-2.5 text-xs disabled:opacity-50"
+                  >
+                    {savingTg ? 'Verifico collegamento…' : '✓ Ho premuto START — verifica'}
+                  </button>
+                )}
+
+                {/* Fallback: già usavi il bot → chat ID manuale */}
+                <details className="text-xs text-slate-400">
+                  <summary className="cursor-pointer hover:text-slate-600">Hai già usato il bot e non ti registra?</summary>
+                  <div className="mt-2 space-y-2">
+                    <p>Apri la chat del bot e scrivi: <code className="bg-slate-100 px-1 rounded">/start {ristoranteId}</code></p>
+                    <p>Oppure incolla qui il Chat ID (il bot te lo mostra scrivendo qualcosa):</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={chatId}
+                        onChange={e => setChatId(e.target.value)}
+                        placeholder="es. 1234567890"
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-terra"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!chatId.trim()) return
+                          setSavingTg(true)
+                          await supabase.from('ristoranti').update({ telegram_chat_id: chatId.trim() }).eq('id', ristoranteId)
+                          setSavingTg(false)
+                          setTgSaved(true)
+                          setTasks(t => ({ ...t, telegram: true }))
+                          setTimeout(() => setActive('fattura'), 800)
+                        }}
+                        disabled={!chatId.trim() || savingTg}
+                        className="px-3 py-2 bg-terra text-white rounded-lg text-xs font-semibold disabled:opacity-50"
+                      >
+                        Salva
+                      </button>
+                    </div>
+                  </div>
+                </details>
+              </div>
             </div>
           </TaskCard>
 
