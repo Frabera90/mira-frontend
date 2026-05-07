@@ -1,0 +1,13 @@
+{
+  "name": "MIRA — Magazzino Intelligente",
+  "short_name": "MIRA",
+  "description": "Gestione intelligente del magazzino per ristoranti",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
