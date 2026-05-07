@@ -83,14 +83,17 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
 
   // ── Telegram ─────────────────────────────────────────────────
 
-  async function salvaTelegram() {
-    if (!chatId.trim()) return
+  async function verificaTelegram() {
     setSavingTg(true)
-    await supabase.from('ristoranti').update({ telegram_chat_id: chatId.trim() }).eq('id', ristoranteId)
+    const { data } = await supabase.from('ristoranti').select('telegram_chat_id').eq('id', ristoranteId).single()
     setSavingTg(false)
-    setTgSaved(true)
-    setTasks(t => ({ ...t, telegram: true }))
-    setTimeout(() => setActive('fattura'), 800)
+    if (data?.telegram_chat_id) {
+      setTgSaved(true)
+      setTasks(t => ({ ...t, telegram: true }))
+      setTimeout(() => setActive('fattura'), 800)
+    } else {
+      alert('Non ancora collegato. Apri Telegram e premi START sul bot.')
+    }
   }
 
   // ── Menu AI ───────────────────────────────────────────────────
@@ -200,43 +203,39 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             onToggle={() => setActive(active === 'telegram' ? null : 'telegram')}
           >
             <div className="space-y-3">
-              <div className="space-y-2 text-sm">
-                <p className="font-semibold text-caffe">Come fare:</p>
-                <div className="flex gap-2"><span className="w-5 h-5 rounded-full bg-terra/10 text-terra text-xs font-bold flex items-center justify-center shrink-0">1</span><span className="text-slate-600">Tocca il tasto blu → si apre Telegram</span></div>
-                <div className="flex gap-2"><span className="w-5 h-5 rounded-full bg-terra/10 text-terra text-xs font-bold flex items-center justify-center shrink-0">2</span><span className="text-slate-600">Scrivi qualsiasi messaggio (es. "ciao")</span></div>
-                <div className="flex gap-2"><span className="w-5 h-5 rounded-full bg-terra/10 text-terra text-xs font-bold flex items-center justify-center shrink-0">3</span><span className="text-slate-600">Il bot ti risponde con il tuo <strong>Chat ID</strong> (un numero)</span></div>
-                <div className="flex gap-2"><span className="w-5 h-5 rounded-full bg-terra/10 text-terra text-xs font-bold flex items-center justify-center shrink-0">4</span><span className="text-slate-600">Incollalo qui sotto e premi Salva</span></div>
+              <div className="bg-slate-50 rounded-xl p-3 space-y-2 text-sm">
+                <p className="font-semibold text-caffe">In automatico ogni giorno:</p>
+                <div className="flex gap-2 text-slate-600"><span>☀️</span><span><strong>Briefing mattutino</strong> — ordini urgenti, scadenze, prenotazioni</span></div>
+                <div className="flex gap-2 text-slate-600"><span>📊</span><span><strong>Report serale</strong> — sprechi, carichi, fatture del giorno</span></div>
+                <div className="flex gap-2 text-slate-600"><span>🗣️</span><span><strong>Messaggi liberi</strong> — scrivi o manda un vocale al bot</span></div>
               </div>
+
+              <p className="text-xs text-slate-500">Tocca il pulsante → Telegram si apre → premi <strong>START</strong> → collegato automaticamente.</p>
 
               <a
-                href={`https://t.me/${BOT}`}
+                href={`https://t.me/${BOT}?start=${ristoranteId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 bg-[#229ED9] text-white font-semibold rounded-xl py-3 text-sm"
+                className="flex items-center justify-center gap-2 bg-[#229ED9] text-white font-semibold rounded-xl py-3.5 text-sm"
               >
                 <ExternalLink size={15} />
-                Apri @{BOT} su Telegram
+                Collega Telegram — premi START
               </a>
 
-              <div>
-                <label className="block text-xs font-semibold text-maro mb-1.5">Il tuo Chat ID</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={chatId}
-                  onChange={e => setChatId(e.target.value)}
-                  placeholder="es. 1234567890"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono outline-none focus:border-terra"
-                />
-              </div>
-
-              <button
-                onClick={salvaTelegram}
-                disabled={savingTg || !chatId.trim()}
-                className="w-full bg-terra text-white font-semibold rounded-xl py-3 text-sm disabled:opacity-50"
-              >
-                {tgSaved ? '✓ Salvato!' : savingTg ? 'Salvo…' : 'Salva Chat ID'}
-              </button>
+              {tgSaved ? (
+                <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-4 py-3">
+                  <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                  <p className="text-sm text-emerald-700 font-medium">Telegram collegato!</p>
+                </div>
+              ) : (
+                <button
+                  onClick={verificaTelegram}
+                  disabled={savingTg}
+                  className="w-full border border-slate-200 text-slate-500 rounded-xl py-2.5 text-xs disabled:opacity-50"
+                >
+                  {savingTg ? 'Verifico…' : 'Ho premuto START sul bot ✓'}
+                </button>
+              )}
             </div>
           </TaskCard>
 
