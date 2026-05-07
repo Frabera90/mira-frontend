@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Upload, FileImage, RotateCcw, CheckCircle, Loader2, CalendarDays, Hash, ArrowLeft, Package } from 'lucide-react'
-import { supabase, BACKEND_URL } from '../lib/supabase'
+import { Upload, FileImage, RotateCcw, CheckCircle, Loader2, CalendarDays, Hash, ArrowLeft, ChevronRight } from 'lucide-react'
+import { BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
 interface Riga {
@@ -35,10 +35,7 @@ export default function Fattura({ onBack }: Props) {
   const [estratti, setEstratti] = useState<FatturaEstratta | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
-  const [righeSelezionate, setRigheSelezionate] = useState<Set<number>>(new Set())
-  const [confermando, setConfermando] = useState(false)
-  const [scortaAggiornata, setScortaAggiornata] = useState(false)
-  const [risultatoScorte, setRisultatoScorte] = useState<{ caricati: number; nonTrovati: string[] } | null>(null)
+  const [ingredientiCaricati, setIngredientiCaricati] = useState<number>(0)
 
   function handleFile(file: File) {
     const url = URL.createObjectURL(file)
@@ -81,7 +78,7 @@ export default function Fattura({ onBack }: Props) {
       const json = await res.json()
       if (!json.ok) throw new Error(json.error ?? 'Errore sconosciuto')
       setEstratti(json.data.estratti)
-      setRigheSelezionate(new Set((json.data.estratti.righe as Riga[]).map((_, i) => i)))
+      setIngredientiCaricati(json.data.ingredienti_caricati ?? 0)
       setFase('risultato')
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore di rete')
@@ -95,72 +92,8 @@ export default function Fattura({ onBack }: Props) {
     setFileInfo(null)
     setEstratti(null)
     setErrore(null)
-    setRigheSelezionate(new Set())
-    setScortaAggiornata(false)
-    setRisultatoScorte(null)
+    setIngredientiCaricati(0)
     if (inputRef.current) inputRef.current.value = ''
-  }
-
-  async function confermaScorte() {
-    if (!estratti || righeSelezionate.size === 0) return
-    setConfermando(true)
-
-    let caricati = 0
-    const nonTrovati: string[] = []
-
-    for (const idx of righeSelezionate) {
-      const riga = estratti.righe[idx]
-      if (!riga.quantita || riga.quantita <= 0) continue
-
-      // Try matching by first word, then first two words
-      const parole = riga.descrizione.split(' ')
-      const keyword1 = parole.slice(0, 2).join(' ')
-      const keyword2 = parole[0]
-
-      let ing = null
-      for (const kw of [keyword1, keyword2]) {
-        const { data } = await supabase
-          .from('ingredienti')
-          .select('id')
-          .ilike('nome', `%${kw}%`)
-          .limit(1)
-          .maybeSingle()
-        if (data) { ing = data; break }
-      }
-
-      if (!ing) {
-        nonTrovati.push(riga.descrizione)
-        continue
-      }
-
-      const { data: scorta } = await supabase
-        .from('scorte')
-        .select('quantita_disponibile')
-        .eq('ristorante_id', ristoranteId)
-        .eq('ingrediente_id', ing.id)
-        .maybeSingle()
-
-      await Promise.all([
-        supabase.from('scorte').upsert({
-          ristorante_id: ristoranteId,
-          ingrediente_id: ing.id,
-          quantita_disponibile: (scorta?.quantita_disponibile ?? 0) + riga.quantita,
-          data_ultimo_carico: new Date().toISOString().slice(0, 10),
-        }, { onConflict: 'ristorante_id,ingrediente_id' }),
-        supabase.from('movimenti_scorte').insert({
-          ristorante_id: ristoranteId,
-          ingrediente_id: ing.id,
-          tipo_movimento: 'carico',
-          quantita: riga.quantita,
-          motivo: `Fattura ${estratti.fornitore_nome}`,
-        }),
-      ])
-      caricati++
-    }
-
-    setConfermando(false)
-    setRisultatoScorte({ caricati, nonTrovati })
-    setScortaAggiornata(true)
   }
 
   return (
@@ -262,9 +195,13 @@ export default function Fattura({ onBack }: Props) {
         <div className="space-y-4">
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
             <CheckCircle size={20} className="text-emerald-600 shrink-0" />
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-emerald-800">Fattura salvata</p>
-              <p className="text-xs text-emerald-600">Dati estratti e salvati su Supabase</p>
+              <p className="text-xs text-emerald-600">
+                {ingredientiCaricati > 0
+                  ? `${ingredientiCaricati} ingredient${ingredientiCaricati === 1 ? 'e caricato' : 'i caricati'} in magazzino`
+                  : 'Dati salvati — vai in Magazzino per verificare'}
+              </p>
             </div>
           </div>
 
@@ -321,68 +258,14 @@ export default function Fattura({ onBack }: Props) {
             </div>
           )}
 
-          {estratti.righe.length > 0 && !scortaAggiornata && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-              <h3 className="font-semibold text-caffe text-sm mb-0.5">Aggiorna magazzino</h3>
-              <p className="text-xs text-slate-400 mb-3">Seleziona le righe da caricare in magazzino</p>
-              <div className="space-y-2 mb-4">
-                {estratti.righe.map((r, i) => (
-                  <label key={i} className="flex items-center gap-3 cursor-pointer py-1">
-                    <input
-                      type="checkbox"
-                      checked={righeSelezionate.has(i)}
-                      onChange={e => {
-                        const next = new Set(righeSelezionate)
-                        if (e.target.checked) next.add(i)
-                        else next.delete(i)
-                        setRigheSelezionate(next)
-                      }}
-                      className="w-4 h-4 accent-terra shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-caffe font-medium truncate">{r.descrizione}</p>
-                      <p className="text-xs text-slate-400">{r.quantita} {r.unita_misura}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              <button
-                onClick={confermaScorte}
-                disabled={confermando || righeSelezionate.size === 0}
-                className="w-full bg-terra text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-terra/20"
-              >
-                {confermando
-                  ? <Loader2 size={15} className="animate-spin" />
-                  : <Package size={15} />}
-                {confermando
-                  ? 'Aggiornamento…'
-                  : `Carica ${righeSelezionate.size} ingredient${righeSelezionate.size === 1 ? 'e' : 'i'}`}
-              </button>
-            </div>
-          )}
-
-          {scortaAggiornata && risultatoScorte && (
-            <div className={`rounded-xl p-4 border ${risultatoScorte.caricati > 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-              <div className="flex items-start gap-3">
-                <CheckCircle size={18} className={`shrink-0 mt-0.5 ${risultatoScorte.caricati > 0 ? 'text-emerald-600' : 'text-amber-500'}`} />
-                <div>
-                  <p className={`text-sm font-semibold ${risultatoScorte.caricati > 0 ? 'text-emerald-800' : 'text-amber-800'}`}>
-                    {risultatoScorte.caricati > 0
-                      ? `${risultatoScorte.caricati} ingredient${risultatoScorte.caricati === 1 ? 'e caricato' : 'i caricati'}`
-                      : 'Nessun ingrediente abbinato'}
-                  </p>
-                  {risultatoScorte.nonTrovati.length > 0 && (
-                    <div className="mt-1">
-                      <p className="text-xs text-amber-700 font-medium">{risultatoScorte.nonTrovati.length} righe non abbinate:</p>
-                      {risultatoScorte.nonTrovati.map((d, i) => (
-                        <p key={i} className="text-xs text-amber-600 truncate">• {d}</p>
-                      ))}
-                      <p className="text-xs text-amber-500 mt-1">Aggiungili in Magazzino con lo stesso nome della fattura.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="w-full bg-terra text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
+            >
+              Vai al Magazzino
+              <ChevronRight size={15} />
+            </button>
           )}
 
           <button
