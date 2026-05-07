@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   RefreshCw, AlertTriangle, Clock, Users, TrendingUp,
   Package, CalendarDays, Settings, ChefHat, ChevronRight,
+  Camera, ShoppingCart, Send,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -240,6 +241,59 @@ export default function Casa({ onNavigate }: CasaProps) {
       {errore && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
           <strong>Errore:</strong> {errore}
+        </div>
+      )}
+
+      {/* Empty state — guida per nuovi utenti */}
+      {briefing && !loading &&
+        briefing.ordini_urgenti.length === 0 &&
+        briefing.prodotti_scadenza.length === 0 &&
+        briefing.prenotazioni.length === 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+          <div>
+            <p className="font-semibold text-caffe">Benvenuto! Inizia da qui 👇</p>
+            <p className="text-xs text-slate-400 mt-1">Il magazzino è vuoto. Segui questi 3 passi per popolare MIRA.</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              {
+                n: '1', Icon: Camera, color: 'bg-terra/10 text-terra',
+                titolo: 'Fotografa le tue fatture',
+                desc: 'Vai in "Magazzino" → "Scansiona fattura". L\'AI legge fornitori, ingredienti e prezzi automaticamente.',
+                cta: 'Vai a Magazzino', page: 'magazzino',
+              },
+              {
+                n: '2', Icon: ShoppingCart, color: 'bg-indigo-100 text-indigo-600',
+                titolo: 'Vedi i suggerimenti ordine',
+                desc: 'Dopo aver caricato almeno 2 fatture, MIRA sa cosa ordinare e quando.',
+                cta: 'Vai agli Ordini', page: 'ordini',
+              },
+              {
+                n: '3', Icon: Send, color: 'bg-[#229ED9]/10 text-[#229ED9]',
+                titolo: 'Collega Telegram',
+                desc: 'Ogni mattina ricevi un briefing automatico. Puoi anche parlare col bot in vocale.',
+                cta: 'Impostazioni', page: 'impostazioni',
+              },
+            ].map(({ n, Icon, color, titolo, desc, cta, page }) => (
+              <div key={n} className="flex gap-3 items-start">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+                  <Icon size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-caffe">{titolo}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
+                  {onNavigate && (
+                    <button
+                      onClick={() => onNavigate(page)}
+                      className="text-xs text-terra font-semibold mt-1.5 flex items-center gap-0.5"
+                    >
+                      {cta} <ChevronRight size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

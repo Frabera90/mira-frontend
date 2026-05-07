@@ -64,7 +64,7 @@ export default function Fattura({ onBack }: Props) {
     e.preventDefault()
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
-    if (file && file.type.startsWith('image/')) handleFile(file)
+    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) handleFile(file)
   }
 
   async function analizza() {
@@ -197,13 +197,12 @@ export default function Fattura({ onBack }: Props) {
           </div>
           <div className="text-center">
             <p className="font-semibold text-caffe">Trascina qui o tocca per scegliere</p>
-            <p className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP — max 10 MB</p>
+            <p className="text-xs text-slate-400 mt-1">JPG, PNG, PDF — galleria o fotocamera · max 10 MB</p>
           </div>
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
-            capture="environment"
+            accept="image/*,application/pdf"
             onChange={selezionaFile}
             className="hidden"
           />

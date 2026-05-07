@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Save, LogOut, Send, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -185,6 +185,30 @@ export default function Impostazioni({ onBack }: Props) {
                     placeholder="06 000 0000"
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
                   />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Installa app */}
+          <section>
+            <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">App</p>
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-terra/10 flex items-center justify-center shrink-0">
+                  <Smartphone size={16} className="text-terra" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-caffe">Aggiungi alla schermata Home</p>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                    Su <span className="font-semibold text-caffe">iPhone/iPad (Safari)</span>: tocca{' '}
+                    <span className="inline-flex items-center gap-0.5 font-semibold text-caffe">
+                      <Share size={11} /> Condividi
+                    </span>{' '}
+                    poi <span className="font-semibold text-caffe">«Aggiungi a Home»</span>
+                    <br/>
+                    Su <span className="font-semibold text-caffe">Android (Chrome)</span>: appare in automatico il banner «Installa» in cima alla pagina
+                  </p>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Bell, X } from 'lucide-react'
+import { Bell, X, Download } from 'lucide-react'
 import { supabase, RISTORANTE_ID as DEFAULT_RISTORANTE_ID } from './lib/supabase'
 import { RistoranteContext } from './contexts/RistoranteContext'
 import Login from './pages/Login'
@@ -30,6 +30,8 @@ export default function App() {
   )
   const [badgeNotifiche, setBadgeNotifiche] = useState(0)
   const [pushBanner, setPushBanner] = useState(false)
+  const [installBanner, setInstallBanner] = useState(false)
+  const installPromptRef = useRef<any>(null)
   const [ristoranteId, setRistoranteId] = useState<string>(
     () => localStorage.getItem('mira_ristorante_id') ?? DEFAULT_RISTORANTE_ID
   )
@@ -68,6 +70,25 @@ export default function App() {
       }
     })
   }, [])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault()
+      installPromptRef.current = e
+      const alreadyInstalled = window.matchMedia('(display-mode: standalone)').matches
+      if (!alreadyInstalled) setInstallBanner(true)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  async function installaApp() {
+    if (!installPromptRef.current) return
+    installPromptRef.current.prompt()
+    const { outcome } = await installPromptRef.current.userChoice
+    if (outcome === 'accepted') setInstallBanner(false)
+    installPromptRef.current = null
+  }
 
   const skipAuth = import.meta.env.VITE_SKIP_AUTH === 'true'
 
@@ -114,7 +135,24 @@ export default function App() {
   return (
     <RistoranteContext.Provider value={ristoranteId}>
       <div className={`max-w-[480px] mx-auto min-h-screen bg-cream relative ${navPages.includes(page) ? 'pb-[72px]' : ''}`}>
-        {pushBanner && (
+        {installBanner && (
+          <div className="fixed top-0 left-0 right-0 z-50 max-w-[480px] mx-auto bg-terra text-white px-4 py-3 flex items-center gap-3">
+            <Download size={16} className="shrink-0" />
+            <p className="text-sm font-medium flex-1">Aggiungi MIRA alla schermata home</p>
+            <div className="flex gap-2 shrink-0 items-center">
+              <button
+                onClick={installaApp}
+                className="bg-white text-terra text-xs font-semibold px-3 py-1.5 rounded-lg"
+              >
+                Installa
+              </button>
+              <button onClick={() => setInstallBanner(false)} className="text-white/70 p-0.5">
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+        {pushBanner && !installBanner && (
           <div className="fixed top-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-slate-900 text-white px-4 py-3 flex items-center gap-3">
             <Bell size={16} className="shrink-0 text-terra" />
             <p className="text-sm font-medium flex-1">Abilita le notifiche per gli alert di MIRA</p>
@@ -132,7 +170,7 @@ export default function App() {
           </div>
         )}
 
-        <div className={pushBanner ? 'pt-[52px]' : ''}>
+        <div className={installBanner || pushBanner ? 'pt-[52px]' : ''}>
           {page === 'casa'           && <Casa onNavigate={navigate} />}
           {page === 'magazzino'      && <Magazzino onNavigate={navigate} />}
           {page === 'ordini'         && <Ordini onNavigate={navigate} />}
