@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { RefreshCw, Plus, Search, ChevronRight, X, ArrowDown, ArrowUp, Pencil, Trash2, ArrowRightLeft, History, ClipboardList, Settings, SlidersHorizontal, Flame, Leaf, Snowflake, Package, Wine, Star } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
 interface ScortaRaw {
@@ -90,46 +90,27 @@ function AggiungiIngredienteModal({ onClose, onSaved }: AggiungiProps) {
     if (isNaN(qty) || qty < 0) { setErrore('Quantità non valida'); return }
     setSaving(true); setErrore(null)
 
-    // 1. Inserisci nel catalogo ingredienti globale
-    const { data: ing, error: e1 } = await supabase
-      .from('ingredienti')
-      .insert({
+    const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/ingredienti`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         nome: nome.trim(),
         tipo_prodotto: tipo,
         categoria: tipoCfg.categoria,
         unita_misura: um,
+        quantita: qty,
+        stock_minimo: stockMin ? parseFloat(stockMin.replace(',', '.')) : 0,
+        prezzo_acquisto_corrente: prezzo ? parseFloat(prezzo.replace(',', '.')) : null,
+        data_scadenza_prossima: scadenza || null,
         vita_giorni_default: tipoCfg.vitaGg,
         frequenza_ordine_giorni_default: tipoCfg.freqGg,
         soglia_alert_giorni_default: tipoCfg.sogliaGg,
         lead_time_fornitore_giorni_default: tipoCfg.leadGg,
         tasso_spreco_percentuale_default: tipoCfg.spreco,
-      })
-      .select('id')
-      .single()
-
-    if (e1) { setErrore(e1.message); setSaving(false); return }
-
-    // 2. Collega al ristorante
-    const { error: e2 } = await supabase.from('ingredienti_ristorante').insert({
-      ristorante_id: ristoranteId,
-      ingrediente_id: ing.id,
-      stock_minimo: stockMin ? parseFloat(stockMin.replace(',', '.')) : 0,
-      prezzo_acquisto_corrente: prezzo ? parseFloat(prezzo.replace(',', '.')) : null,
-      attivo: true,
+      }),
     })
-
-    if (e2) { setErrore(e2.message); setSaving(false); return }
-
-    // 3. Scorta iniziale
-    const { error: e3 } = await supabase.from('scorte').insert({
-      ristorante_id: ristoranteId,
-      ingrediente_id: ing.id,
-      quantita_disponibile: qty,
-      data_ultimo_carico: new Date().toISOString().slice(0, 10),
-      data_scadenza_prossima: scadenza || null,
-    })
-
-    if (e3) { setErrore(e3.message); setSaving(false); return }
+    const json = await res.json()
+    if (!json.ok) { setErrore(json.error ?? 'Errore salvataggio ingrediente'); setSaving(false); return }
     onSaved()
   }
 
@@ -357,45 +338,37 @@ function DettaglioSheet({ scorta, onClose, onSaved }: { scorta: Scorta; onClose:
     const prezzo   = parseFloat(editPrezzo.replace(',', '.'))
     const tipoCfg  = TIPI_PRODOTTO.find(t => t.id === editTipo)!
 
-    const [r1, r2, r3] = await Promise.all([
-      supabase.from('ingredienti')
-        .update({
-          nome: editNome.trim(),
-          tipo_prodotto: editTipo,
-          categoria: tipoCfg.categoria,
-          vita_giorni_default: tipoCfg.vitaGg,
-          frequenza_ordine_giorni_default: tipoCfg.freqGg,
-          soglia_alert_giorni_default: tipoCfg.sogliaGg,
-          lead_time_fornitore_giorni_default: tipoCfg.leadGg,
-          tasso_spreco_percentuale_default: tipoCfg.spreco,
-        })
-        .eq('id', scorta.ingrediente_id),
-      supabase.from('ingredienti_ristorante')
-        .update({
-          stock_minimo: isNaN(stockMin) ? 0 : stockMin,
-          prezzo_acquisto_corrente: isNaN(prezzo) ? null : prezzo,
-        })
-        .eq('ristorante_id', ristoranteId)
-        .eq('ingrediente_id', scorta.ingrediente_id),
-      supabase.from('scorte')
-        .update({ data_scadenza_prossima: editScadenza || null })
-        .eq('ristorante_id', ristoranteId)
-        .eq('ingrediente_id', scorta.ingrediente_id),
-    ])
-
-    const err = r1.error ?? r2.error ?? r3.error
+    const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/ingredienti/${scorta.ingrediente_id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nome: editNome.trim(),
+        tipo_prodotto: editTipo,
+        categoria: tipoCfg.categoria,
+        stock_minimo: isNaN(stockMin) ? 0 : stockMin,
+        prezzo_acquisto_corrente: isNaN(prezzo) ? null : prezzo,
+        data_scadenza_prossima: editScadenza || null,
+        vita_giorni_default: tipoCfg.vitaGg,
+        frequenza_ordine_giorni_default: tipoCfg.freqGg,
+        soglia_alert_giorni_default: tipoCfg.sogliaGg,
+        lead_time_fornitore_giorni_default: tipoCfg.leadGg,
+        tasso_spreco_percentuale_default: tipoCfg.spreco,
+      }),
+    })
+    const json = await res.json()
     setSavingEdit(false)
-    if (err) { setErroreEdit(err.message); return }
+    if (!json.ok) { setErroreEdit(json.error ?? 'Errore salvataggio modifiche'); return }
     onSaved()
   }
 
   async function eliminaIngrediente() {
     if (!confirm(`Rimuovere "${nome}" dal magazzino?`)) return
     setEliminando(true)
-    await supabase.from('ingredienti_ristorante')
-      .update({ attivo: false })
-      .eq('ristorante_id', ristoranteId)
-      .eq('ingrediente_id', scorta.ingrediente_id)
+    await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/ingredienti/${scorta.ingrediente_id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attivo: false }),
+    })
     onSaved()
   }
 
@@ -405,14 +378,17 @@ function DettaglioSheet({ scorta, onClose, onSaved }: { scorta: Scorta; onClose:
     setSaving(true)
     setErrore(null)
     const quantitaFinale = tipoSel.segno === -1 ? -Math.abs(qty) : Math.abs(qty)
-    const { error } = await supabase.from('movimenti_scorte').insert({
-      ristorante_id:  ristoranteId,
-      ingrediente_id: scorta.ingrediente_id,
-      tipo_movimento: tipoMov,
-      quantita:       quantitaFinale,
-      motivo:         motivo || null,
+    const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/ingredienti/${scorta.ingrediente_id}/movimenti`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo_movimento: tipoMov,
+        quantita: quantitaFinale,
+        motivo: motivo || null,
+      }),
     })
-    if (error) { setErrore(error.message); setSaving(false); return }
+    const json = await res.json()
+    if (!json.ok) { setErrore(json.error ?? 'Errore registrazione movimento'); setSaving(false); return }
     onSaved()
   }
 
