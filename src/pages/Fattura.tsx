@@ -31,6 +31,7 @@ export default function Fattura({ onBack }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fase, setFase] = useState<Fase>('idle')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewType, setPreviewType] = useState<string | null>(null)
   const [fileInfo, setFileInfo] = useState<{ base64: string; mediaType: string } | null>(null)
   const [estratti, setEstratti] = useState<FatturaEstratta | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
@@ -40,6 +41,7 @@ export default function Fattura({ onBack }: Props) {
   function handleFile(file: File) {
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
+    setPreviewType(file.type)
     setFase('preview')
 
     const reader = new FileReader()
@@ -89,6 +91,7 @@ export default function Fattura({ onBack }: Props) {
   function reset() {
     setFase('idle')
     setPreviewUrl(null)
+    setPreviewType(null)
     setFileInfo(null)
     setEstratti(null)
     setErrore(null)
@@ -145,8 +148,14 @@ export default function Fattura({ onBack }: Props) {
       {/* PREVIEW / ERRORE */}
       {(fase === 'preview' || fase === 'errore') && previewUrl && (
         <div className="space-y-4">
-          <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-            <img src={previewUrl} alt="Fattura" className="w-full object-contain max-h-72 bg-slate-50" />
+          <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
+            {previewType === 'application/pdf' ? (
+              <object data={previewUrl} type="application/pdf" className="w-full h-72">
+                <div className="p-6 text-center text-sm text-slate-500">PDF selezionato. Premi Analizza con AI.</div>
+              </object>
+            ) : (
+              <img src={previewUrl} alt="Fattura" className="w-full object-contain max-h-72 bg-slate-50" />
+            )}
           </div>
 
           {fase === 'errore' && errore && (
@@ -178,7 +187,9 @@ export default function Fattura({ onBack }: Props) {
       {fase === 'analisi' && (
         <div className="flex flex-col items-center gap-5 py-16">
           {previewUrl && (
-            <img src={previewUrl} alt="" className="w-28 h-28 object-cover rounded-2xl opacity-40" />
+            previewType === 'application/pdf'
+              ? <div className="w-28 h-28 rounded-2xl bg-slate-100 flex items-center justify-center text-xs text-slate-400 opacity-70">PDF</div>
+              : <img src={previewUrl} alt="" className="w-28 h-28 object-cover rounded-2xl opacity-40" />
           )}
           <div className="flex items-center gap-3">
             <Loader2 size={20} className="text-terra animate-spin" />

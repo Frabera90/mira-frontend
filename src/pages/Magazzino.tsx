@@ -293,6 +293,7 @@ function DettaglioSheet({ scorta, onClose, onSaved }: { scorta: Scorta; onClose:
 
   // form modifica
   const [editNome, setEditNome]           = useState(scorta.ingrediente?.nome ?? '')
+  const [editTipo, setEditTipo]           = useState<TipoProdotto>('fresco_alta_rotazione')
   const [editStockMin, setEditStockMin]   = useState(String(scorta.stock_minimo || ''))
   const [editPrezzo, setEditPrezzo]       = useState('')
   const [editScadenza, setEditScadenza]   = useState(scorta.data_scadenza_prossima ?? '')
@@ -322,15 +323,24 @@ function DettaglioSheet({ scorta, onClose, onSaved }: { scorta: Scorta; onClose:
   useEffect(() => {
     if (vista !== 'modifica' || loadingEdit === false) return
     setLoadingEdit(true)
-    supabase
-      .from('ingredienti_ristorante')
-      .select('prezzo_acquisto_corrente')
-      .eq('ristorante_id', ristoranteId)
-      .eq('ingrediente_id', scorta.ingrediente_id)
-      .single()
-      .then(({ data }) => {
-        if (data?.prezzo_acquisto_corrente != null)
-          setEditPrezzo(String(data.prezzo_acquisto_corrente))
+    Promise.all([
+      supabase
+        .from('ingredienti_ristorante')
+        .select('prezzo_acquisto_corrente')
+        .eq('ristorante_id', ristoranteId)
+        .eq('ingrediente_id', scorta.ingrediente_id)
+        .single(),
+      supabase
+        .from('ingredienti')
+        .select('tipo_prodotto')
+        .eq('id', scorta.ingrediente_id)
+        .single(),
+    ])
+      .then(([ir, ing]) => {
+        if (ir.data?.prezzo_acquisto_corrente != null)
+          setEditPrezzo(String(ir.data.prezzo_acquisto_corrente))
+        if (ing.data?.tipo_prodotto)
+          setEditTipo(ing.data.tipo_prodotto as TipoProdotto)
         setLoadingEdit(false)
       })
   }, [vista, scorta.ingrediente_id, loadingEdit])
@@ -345,10 +355,20 @@ function DettaglioSheet({ scorta, onClose, onSaved }: { scorta: Scorta; onClose:
     setErroreEdit(null)
     const stockMin = parseFloat(editStockMin.replace(',', '.'))
     const prezzo   = parseFloat(editPrezzo.replace(',', '.'))
+    const tipoCfg  = TIPI_PRODOTTO.find(t => t.id === editTipo)!
 
     const [r1, r2, r3] = await Promise.all([
       supabase.from('ingredienti')
-        .update({ nome: editNome.trim() })
+        .update({
+          nome: editNome.trim(),
+          tipo_prodotto: editTipo,
+          categoria: tipoCfg.categoria,
+          vita_giorni_default: tipoCfg.vitaGg,
+          frequenza_ordine_giorni_default: tipoCfg.freqGg,
+          soglia_alert_giorni_default: tipoCfg.sogliaGg,
+          lead_time_fornitore_giorni_default: tipoCfg.leadGg,
+          tasso_spreco_percentuale_default: tipoCfg.spreco,
+        })
         .eq('id', scorta.ingrediente_id),
       supabase.from('ingredienti_ristorante')
         .update({
@@ -517,6 +537,24 @@ function DettaglioSheet({ scorta, onClose, onSaved }: { scorta: Scorta; onClose:
                     onChange={e => setEditNome(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-maro mb-1.5">Tipo stoccaggio</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {TIPI_PRODOTTO.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setEditTipo(t.id)}
+                        className={`flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-medium border transition-all ${
+                          editTipo === t.id ? 'bg-terra text-white border-terra' : 'bg-slate-50 text-slate-500 border-slate-100'
+                        }`}
+                      >
+                        <t.Icon size={15} />
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -701,9 +739,24 @@ export default function Magazzino({ onNavigate }: MagazzinoProps) {
 
     setScorte(merged)
     setLoading(false)
-  }, [oggi])
+  }, [oggi, ristoranteId])
 
   useEffect(() => { carica() }, [carica])
+
+  useEffect(() => {
+    const onFocus = () => carica()
+    window.addEventListener('focus', onFocus)
+    const ch = supabase
+      .channel(`magazzino-${ristoranteId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scorte' }, carica)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movimenti_scorte' }, carica)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredienti_ristorante' }, carica)
+      .subscribe()
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      supabase.removeChannel(ch)
+    }
+  }, [carica, ristoranteId])
 
   const righe = useMemo(() =>
     scorte.filter(s => {

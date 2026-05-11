@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { ArrowLeft, Plus, X, UtensilsCrossed, Pencil, Trash2, EyeOff, Eye, RefreshCw, BookOpen, Minus } from 'lucide-react'
+import { ArrowLeft, Plus, X, UtensilsCrossed, Pencil, Trash2, EyeOff, Eye, RefreshCw, BookOpen, Minus, Upload, Loader2 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -364,6 +364,8 @@ export default function Menu({ onBack }: Props) {
   const [selezionato, setSelezionato]   = useState<Piatto | null>(null)
   const [ricettaPiatto, setRicettaPiatto] = useState<Piatto | null>(null)
   const [filtroAttivo, setFiltroAttivo] = useState<'tutti' | 'in_carta' | 'non_disp'>('tutti')
+  const [scanMenu, setScanMenu] = useState(false)
+  const [scanErrore, setScanErrore] = useState<string | null>(null)
 
   const carica = useCallback(() => {
     setLoading(true)
@@ -380,6 +382,47 @@ export default function Menu({ onBack }: Props) {
   }, [ristoranteId])
 
   useEffect(() => { carica() }, [carica])
+
+  useEffect(() => {
+    const onFocus = () => carica()
+    window.addEventListener('focus', onFocus)
+    const ch = supabase
+      .channel(`menu-${ristoranteId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'piatti' }, carica)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'piatti_ingredienti' }, carica)
+      .subscribe()
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      supabase.removeChannel(ch)
+    }
+  }, [carica, ristoranteId])
+
+  async function analizzaMenu(file: File) {
+    setScanMenu(true)
+    setScanErrore(null)
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const [header, base64] = dataUrl.split(',')
+      const mediaType = header.match(/:(.*?);/)?.[1] ?? file.type
+      const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/menu/analizza`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mediaType }),
+      })
+      const json = await res.json()
+      if (!json.ok) throw new Error(json.error ?? 'Errore lettura menu')
+      carica()
+    } catch (err) {
+      setScanErrore(err instanceof Error ? err.message : 'Errore di rete')
+    } finally {
+      setScanMenu(false)
+    }
+  }
 
   async function toggleAttivo(p: Piatto) {
     await supabase.from('piatti').update({ attivo: !p.attivo }).eq('id', p.id)
@@ -419,6 +462,19 @@ export default function Menu({ onBack }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <label className="w-9 h-9 bg-white border border-slate-200 text-maro rounded-xl flex items-center justify-center active:scale-90 transition-transform">
+            {scanMenu ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={e => {
+                const f = e.target.files?.[0]
+                if (f) analizzaMenu(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
           <button onClick={carica} className="p-2 rounded-xl text-maro hover:bg-slate-100 active:scale-90 transition-all">
             <RefreshCw size={18} />
           </button>
@@ -430,6 +486,12 @@ export default function Menu({ onBack }: Props) {
           </button>
         </div>
       </div>
+
+      {scanErrore && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-sm mb-4">
+          {scanErrore}
+        </div>
+      )}
 
       {/* Filtri */}
       <div className="flex gap-2 mb-4">

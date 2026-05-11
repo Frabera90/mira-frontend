@@ -98,6 +98,14 @@ interface FoodCostKpi {
   avgFoodCostPct: number | null
   inAlert: number
 }
+interface PredictorAlert {
+  ingrediente: string
+  giorni_copertura: number
+  quantita_suggerita: number
+  costo_stimato: number | null
+  fornitore: string | null
+  messaggio: string
+}
 
 export default function Casa({ onNavigate }: CasaProps) {
   const ristoranteId = useRistorante()
@@ -105,6 +113,7 @@ export default function Casa({ onNavigate }: CasaProps) {
   const [loading, setLoading] = useState(true)
   const [errore, setErrore] = useState<string | null>(null)
   const [foodCostKpi, setFoodCostKpi] = useState<FoodCostKpi | null>(null)
+  const [predictor, setPredictor] = useState<PredictorAlert[]>([])
   const nomeChef = localStorage.getItem('mira_chef_name') || 'Chef'
 
   const carica = useCallback(() => {
@@ -143,6 +152,13 @@ export default function Casa({ onNavigate }: CasaProps) {
         ).length
         setFoodCostKpi({ avgFoodCostPct: avg, inAlert })
       })
+  }, [ristoranteId])
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/inventory-predictor`)
+      .then(r => r.json())
+      .then(j => { if (j.ok) setPredictor(j.data ?? []) })
+      .catch(() => {})
   }, [ristoranteId])
 
   const ora   = new Date().getHours()
@@ -242,6 +258,24 @@ export default function Casa({ onNavigate }: CasaProps) {
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
           <strong>Errore:</strong> {errore}
         </div>
+      )}
+
+      {onNavigate && predictor.length > 0 && (
+        <button
+          onClick={() => onNavigate('ordini')}
+          className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left flex gap-3 active:scale-[0.99] transition-transform"
+        >
+          <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+            <AlertTriangle size={17} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-900">Inventory predictor</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {predictor[0].messaggio} Vuoi preparare l'ordine?
+            </p>
+          </div>
+          <ChevronRight size={16} className="text-amber-500 shrink-0 mt-2" />
+        </button>
       )}
 
       {/* Empty state — guida per nuovi utenti */}
