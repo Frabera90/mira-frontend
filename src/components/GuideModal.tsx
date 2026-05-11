@@ -31,14 +31,20 @@ const CATEGORIE = ['antipasto', 'primo', 'secondo', 'contorno', 'dessert', 'beva
 export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   const [tasks, setTasks]         = useState<Tasks>({ telegram: false, fattura: false, menu: false })
   const [loaded, setLoaded]       = useState(false)
-  const [open, setOpen]           = useState(() => localStorage.getItem('mira_guide_dismissed') !== 'true')
+  const [open, setOpen]           = useState(true)
   const [active, setActive]       = useState<keyof Tasks | null>('telegram')
-  const fileRef                   = useRef<HTMLInputElement>(null)
+  const menuFileRef               = useRef<HTMLInputElement>(null)
+  const fatturaFileRef            = useRef<HTMLInputElement>(null)
 
   // Telegram
   const [chatId, setChatId]       = useState('')
   const [savingTg, setSavingTg]   = useState(false)
   const [tgSaved, setTgSaved]     = useState(false)
+  const [tgError, setTgError]     = useState('')
+
+  // Fattura AI
+  const [analisiFattura, setAnalisiFattura] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle')
+  const [errFattura, setErrFattura] = useState('')
 
   // Menu manuale
   const [piatti, setPiatti]       = useState<PiattoForm[]>([])
@@ -79,6 +85,10 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   }, [ristoranteId])
 
   const allDone = tasks.telegram && tasks.fattura && tasks.menu
+  useEffect(() => {
+    if (allDone) localStorage.setItem('mira_guide_dismissed', 'true')
+  }, [allDone])
+
   if (!loaded || allDone) return null
 
   const done = Object.values(tasks).filter(Boolean).length
@@ -88,6 +98,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
 
   async function verificaTelegram() {
     setSavingTg(true)
+    setTgError('')
     const { data } = await supabase.from('ristoranti').select('telegram_chat_id').eq('id', ristoranteId).single()
     setSavingTg(false)
     if (data?.telegram_chat_id) {
@@ -95,8 +106,42 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
       setTasks(t => ({ ...t, telegram: true }))
       setTimeout(() => setActive('fattura'), 800)
     } else {
-      alert('Non ancora collegato. Apri Telegram e premi START sul bot.')
+      setTgError('Non risulta ancora collegato. Apri Telegram, premi START e poi riprova la verifica.')
     }
+  }
+
+  // ── Fattura AI ───────────────────────────────────────────────────────────
+
+  async function analizzaFattura(file: File) {
+    if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
+      setErrFattura('Formato non supportato. Usa JPG, PNG, WEBP, GIF o PDF. Se la foto e in HEIC, esportala come JPG.')
+      setAnalisiFattura('err')
+      return
+    }
+    setAnalisiFattura('loading')
+    setErrFattura('')
+    const reader = new FileReader()
+    reader.onload = async ev => {
+      const dataUrl = ev.target?.result as string
+      const [header, base64] = dataUrl.split(',')
+      const mediaType = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/fatture/analizza`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64, mediaType }),
+        })
+        const json = await res.json()
+        if (!json.ok) throw new Error(json.error ?? 'Errore sconosciuto')
+        setAnalisiFattura('ok')
+        setTasks(t => ({ ...t, fattura: true }))
+        setTimeout(() => setActive('menu'), 900)
+      } catch (e) {
+        setErrFattura(e instanceof Error ? e.message : 'Errore di rete')
+        setAnalisiFattura('err')
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   // ── Menu AI ───────────────────────────────────────────────────
@@ -176,7 +221,6 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   // ── Render ────────────────────────────────────────────────────
 
   function chiudiGuida() {
-    localStorage.setItem('mira_guide_dismissed', 'true')
     setOpen(false)
   }
 
@@ -194,7 +238,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={chiudiGuida} />
+      <div className="absolute inset-0 bg-black/40" />
 
       {/* Modal */}
       <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col">
@@ -204,7 +248,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             <h2 className="text-lg font-bold text-caffe">Configura MIRA</h2>
             <p className="text-xs text-slate-400 mt-0.5">{done} di {total} completati</p>
           </div>
-          <button onClick={chiudiGuida} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
+          <button onClick={chiudiGuida} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl" aria-label="Riduci guida">
             <X size={18} />
           </button>
         </div>
@@ -267,6 +311,12 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                   </button>
                 )}
 
+                {tgError && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    {tgError}
+                  </div>
+                )}
+
                 {/* Fallback: già usavi il bot → chat ID manuale */}
                 <details className="text-xs text-slate-400">
                   <summary className="cursor-pointer hover:text-slate-600">Hai già usato il bot e non ti registra?</summary>
@@ -316,13 +366,47 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             onToggle={() => setActive(active === 'fattura' ? null : 'fattura')}
           >
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">Vai alla sezione <strong>Fatture</strong>. Poi fotografa o carica un PDF di una qualsiasi fattura fornitore.</p>
+              <p className="text-sm text-slate-600">Fotografa o carica una fattura fornitore: MIRA legge prodotti, quantita e prezzi senza farti uscire dalla guida.</p>
+              <div className="bg-slate-50 rounded-xl p-3">
+                {analisiFattura === 'loading' && (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 size={16} className="animate-spin text-terra" />
+                    <p className="text-sm text-slate-600">Leggo la fattura...</p>
+                  </div>
+                )}
+                {analisiFattura === 'ok' && (
+                  <div className="flex items-center gap-2 py-2">
+                    <CheckCircle size={16} className="text-emerald-600" />
+                    <p className="text-sm text-emerald-700 font-semibold">Fattura salvata. Passiamo al menu.</p>
+                  </div>
+                )}
+                {analisiFattura === 'err' && (
+                  <p className="text-xs text-rose-600 mb-2">{errFattura}</p>
+                )}
+                {analisiFattura !== 'ok' && (
+                  <button
+                    onClick={() => fatturaFileRef.current?.click()}
+                    disabled={analisiFattura === 'loading'}
+                    className="w-full border border-dashed border-slate-300 rounded-xl py-3 text-sm font-semibold text-caffe hover:border-terra hover:text-terra disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Camera size={15} />
+                    Scansiona fattura ora
+                  </button>
+                )}
+                <input
+                  ref={fatturaFileRef}
+                  type="file"
+                  accept={ACCEPTED_AI_FILES}
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) analizzaFattura(f); e.target.value = '' }}
+                />
+              </div>
               <button
-                onClick={() => { setOpen(false); onNavigate('magazzino') }}
-                className="w-full bg-terra text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center gap-2"
+                onClick={() => { setOpen(false); onNavigate('fattura') }}
+                className="w-full border border-slate-200 text-slate-500 font-medium rounded-xl py-2.5 text-xs flex items-center justify-center gap-2"
               >
                 <Camera size={15} />
-                Vai a Fatture
+                Apri pagina Fatture
               </button>
             </div>
           </TaskCard>
@@ -359,7 +443,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                 )}
                 {analisiMenu !== 'ok' && (
                   <button
-                    onClick={() => fileRef.current?.click()}
+                    onClick={() => menuFileRef.current?.click()}
                     disabled={analisiMenu === 'loading'}
                     className="w-full border border-dashed border-slate-300 rounded-xl py-2.5 text-sm text-slate-500 hover:border-terra hover:text-terra disabled:opacity-50"
                   >
@@ -367,7 +451,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                   </button>
                 )}
                 <input
-                  ref={fileRef}
+                  ref={menuFileRef}
                   type="file"
                   accept={ACCEPTED_AI_FILES}
                   className="hidden"
