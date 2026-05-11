@@ -33,6 +33,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   const [loaded, setLoaded]       = useState(false)
   const [open, setOpen]           = useState(true)
   const [active, setActive]       = useState<keyof Tasks | null>('telegram')
+  const [showComplete, setShowComplete] = useState(false)
   const menuFileRef               = useRef<HTMLInputElement>(null)
   const fatturaFileRef            = useRef<HTMLInputElement>(null)
 
@@ -45,6 +46,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   // Fattura AI
   const [analisiFattura, setAnalisiFattura] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle')
   const [errFattura, setErrFattura] = useState('')
+  const [fatturaResult, setFatturaResult] = useState<{
+    ingredienti: number
+    fornitore?: string
+    righe?: number
+  } | null>(null)
 
   // Menu manuale
   const [piatti, setPiatti]       = useState<PiattoForm[]>([])
@@ -85,11 +91,8 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   }, [ristoranteId])
 
   const allDone = tasks.telegram && tasks.fattura && tasks.menu
-  useEffect(() => {
-    if (allDone) localStorage.setItem('mira_guide_dismissed', 'true')
-  }, [allDone])
 
-  if (!loaded || allDone) return null
+  if (!loaded || (allDone && !showComplete)) return null
 
   const done = Object.values(tasks).filter(Boolean).length
   const total = 3
@@ -103,7 +106,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
     setSavingTg(false)
     if (data?.telegram_chat_id) {
       setTgSaved(true)
-      setTasks(t => ({ ...t, telegram: true }))
+      setTasks(t => {
+        const next = { ...t, telegram: true }
+        if (next.telegram && next.fattura && next.menu) setShowComplete(true)
+        return next
+      })
       setTimeout(() => setActive('fattura'), 800)
     } else {
       setTgError('Non risulta ancora collegato. Apri Telegram, premi START e poi riprova la verifica.')
@@ -134,8 +141,16 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
         const json = await res.json()
         if (!json.ok) throw new Error(json.error ?? 'Errore sconosciuto')
         setAnalisiFattura('ok')
-        setTasks(t => ({ ...t, fattura: true }))
-        setTimeout(() => setActive('menu'), 900)
+        setFatturaResult({
+          ingredienti: json.data?.ingredienti_caricati ?? 0,
+          fornitore: json.data?.estratti?.fornitore_nome,
+          righe: json.data?.estratti?.righe?.length ?? 0,
+        })
+        setTasks(t => {
+          const next = { ...t, fattura: true }
+          if (next.telegram && next.fattura && next.menu) setShowComplete(true)
+          return next
+        })
       } catch (e) {
         setErrFattura(e instanceof Error ? e.message : 'Errore di rete')
         setAnalisiFattura('err')
@@ -168,8 +183,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
         const json = await res.json()
         if (!json.ok) throw new Error(json.error)
         setAnalisiMenu('ok')
-        setTasks(t => ({ ...t, menu: true }))
-        setTimeout(() => setActive(null), 1500)
+        setTasks(t => {
+          const next = { ...t, menu: true }
+          if (next.telegram && next.fattura && next.menu) setShowComplete(true)
+          return next
+        })
       } catch (e) {
         setErrMenu(e instanceof Error ? e.message : 'Errore')
         setAnalisiMenu('err')
@@ -214,8 +232,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
       else await supabase.from('piatti').insert(payload)
     }
     setSavingMenu(false)
-    setTasks(t => ({ ...t, menu: true }))
-    setTimeout(() => setActive(null), 800)
+    setTasks(t => {
+      const next = { ...t, menu: true }
+      if (next.telegram && next.fattura && next.menu) setShowComplete(true)
+      return next
+    })
   }
 
   // ── Render ────────────────────────────────────────────────────
@@ -242,6 +263,41 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
 
       {/* Modal */}
       <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col">
+        {showComplete ? (
+          <div className="p-6 space-y-5">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <CheckCircle size={28} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-caffe">MIRA pronta</h2>
+              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+                Telegram, fattura e menu sono collegati. Ora puoi controllare le scorte caricate e iniziare a usare il servizio.
+              </p>
+            </div>
+            {fatturaResult && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-sm font-semibold text-emerald-800">Ultima fattura caricata</p>
+                <p className="text-xs text-emerald-700 mt-1">
+                  {fatturaResult.ingredienti
+                    ? `${fatturaResult.ingredienti} prodotti caricati in Scorte`
+                    : `${fatturaResult.righe ?? 0} righe lette. Controlla Scorte.`}
+                </p>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                localStorage.setItem('mira_guide_dismissed', 'true')
+                setShowComplete(false)
+                setOpen(false)
+                onNavigate('magazzino')
+              }}
+              className="w-full bg-terra text-white font-semibold rounded-xl py-3.5"
+            >
+              Vai a Scorte
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div>
@@ -339,7 +395,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                           await supabase.from('ristoranti').update({ telegram_chat_id: chatId.trim() }).eq('id', ristoranteId)
                           setSavingTg(false)
                           setTgSaved(true)
-                          setTasks(t => ({ ...t, telegram: true }))
+                          setTasks(t => {
+                            const next = { ...t, telegram: true }
+                            if (next.telegram && next.fattura && next.menu) setShowComplete(true)
+                            return next
+                          })
                           setTimeout(() => setActive('fattura'), 800)
                         }}
                         disabled={!chatId.trim() || savingTg}
@@ -364,6 +424,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             done={tasks.fattura}
             active={active === 'fattura'}
             onToggle={() => setActive(active === 'fattura' ? null : 'fattura')}
+            keepOpenWhenDone={analisiFattura === 'ok'}
           >
             <div className="space-y-3">
               <p className="text-sm text-slate-600">Fotografa o carica una fattura fornitore: MIRA legge prodotti, quantita e prezzi senza farti uscire dalla guida.</p>
@@ -375,9 +436,35 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                   </div>
                 )}
                 {analisiFattura === 'ok' && (
-                  <div className="flex items-center gap-2 py-2">
-                    <CheckCircle size={16} className="text-emerald-600" />
-                    <p className="text-sm text-emerald-700 font-semibold">Fattura salvata. Passiamo al menu.</p>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-3">
+                      <CheckCircle size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-emerald-800 font-semibold">Fattura salvata</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          {fatturaResult?.ingredienti
+                            ? `${fatturaResult.ingredienti} prodotti caricati in Scorte`
+                            : `${fatturaResult?.righe ?? 0} righe lette. Controlla Scorte per verificare i prodotti.`}
+                        </p>
+                        {fatturaResult?.fornitore && (
+                          <p className="text-xs text-emerald-700 mt-0.5">Fornitore: {fatturaResult.fornitore}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => { setOpen(false); onNavigate('magazzino') }}
+                        className="rounded-xl bg-terra text-white py-2.5 text-xs font-semibold"
+                      >
+                        Vedi Scorte
+                      </button>
+                      <button
+                        onClick={() => setActive('menu')}
+                        className="rounded-xl border border-slate-200 text-slate-600 py-2.5 text-xs font-semibold"
+                      >
+                        Continua
+                      </button>
+                    </div>
                   </div>
                 )}
                 {analisiFattura === 'err' && (
@@ -421,6 +508,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             done={tasks.menu}
             active={active === 'menu'}
             onToggle={() => setActive(active === 'menu' ? null : 'menu')}
+            keepOpenWhenDone={analisiMenu === 'ok'}
           >
             <div className="space-y-4">
               {/* AI: fotografa menu */}
@@ -527,6 +615,8 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             </div>
           </TaskCard>
         </div>
+        </>
+        )}
       </div>
     </div>
   )
@@ -535,7 +625,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
 // ── Sub-component ─────────────────────────────────────────────
 
 function TaskCard({
-  id, icon, iconBg, title, desc, done, active, onToggle, children,
+  id, icon, iconBg, title, desc, done, active, onToggle, children, keepOpenWhenDone = false,
 }: {
   id: string
   icon: React.ReactNode
@@ -546,6 +636,7 @@ function TaskCard({
   active: boolean
   onToggle: () => void
   children: React.ReactNode
+  keepOpenWhenDone?: boolean
 }) {
   return (
     <div className={`rounded-2xl border transition-all ${done ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 bg-white'}`}>
@@ -560,14 +651,14 @@ function TaskCard({
           <p className={`text-sm font-semibold ${done ? 'text-emerald-700 line-through' : 'text-caffe'}`}>{title}</p>
           {!done && <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>}
         </div>
-        {!done && (
+        {(!done || keepOpenWhenDone) && (
           <div className="shrink-0 text-slate-300">
             {active ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
         )}
       </button>
 
-      {active && !done && (
+      {active && (!done || keepOpenWhenDone) && (
         <div className="px-4 pb-4 pt-0">
           <div className="border-t border-slate-100 pt-3">
             {children}
