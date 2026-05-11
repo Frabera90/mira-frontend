@@ -12,6 +12,7 @@ import Notifiche from './pages/Notifiche'
 import Prenotazioni from './pages/Prenotazioni'
 import Fornitori from './pages/Fornitori'
 import Menu from './pages/Menu'
+import VenditeCsv from './pages/VenditeCsv'
 import StoricoOrdini from './pages/StoricoOrdini'
 import Impostazioni from './pages/Impostazioni'
 import FoodCost from './pages/FoodCost'
@@ -21,7 +22,7 @@ import { registerSW, subscribePush, isPushSupported } from './hooks/usePush'
 import Assistente from './pages/Assistente'
 import GuideModal from './components/GuideModal'
 
-export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'menu' | 'storico-ordini' | 'impostazioni' | 'food-cost'
+export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'menu' | 'vendite-csv' | 'storico-ordini' | 'impostazioni' | 'food-cost'
 
 export default function App() {
   const [session, setSession]       = useState<Session | null>(null)
@@ -181,6 +182,7 @@ export default function App() {
           {page === 'prenotazioni'   && <Prenotazioni onBack={() => setPage('casa')} />}
           {page === 'fornitori'      && <Fornitori onBack={() => setPage('ordini')} />}
           {page === 'menu'           && <Menu onBack={() => setPage('casa')} />}
+          {page === 'vendite-csv'    && <VenditeCsv onBack={() => setPage('casa')} />}
           {page === 'storico-ordini' && <StoricoOrdini onBack={() => setPage('ordini')} />}
           {page === 'impostazioni'   && <Impostazioni onBack={() => setPage('casa')} />}
           {page === 'food-cost'      && <FoodCost onBack={() => setPage('ordini')} />}

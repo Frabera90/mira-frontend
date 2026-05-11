@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   RefreshCw, AlertTriangle, Clock, Users, TrendingUp,
   Package, CalendarDays, Settings, ChefHat, ChevronRight,
-  Camera, ShoppingCart, Send, UtensilsCrossed, Truck,
+  Camera, ShoppingCart, Send, UtensilsCrossed, Truck, FileSpreadsheet,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -303,6 +303,7 @@ export default function Casa({ onNavigate }: CasaProps) {
           {[
             { icon: UtensilsCrossed, label: 'Menu',        page: 'menu',         color: 'bg-terra/10 text-terra' },
             { icon: Truck,           label: 'Fornitori',   page: 'fornitori',    color: 'bg-indigo-50 text-indigo-600' },
+            { icon: FileSpreadsheet, label: 'Vendite CSV', page: 'vendite-csv',  color: 'bg-sky-50 text-sky-600' },
             { icon: CalendarDays,    label: 'Prenotazioni',page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
             { icon: ChefHat,         label: 'Food Cost',   page: 'food-cost',    color: 'bg-emerald-50 text-emerald-600' },
           ].map(({ icon: Icon, label, page, color }) => (

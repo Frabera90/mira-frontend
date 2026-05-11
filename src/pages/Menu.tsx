@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { ArrowLeft, Plus, X, UtensilsCrossed, Pencil, Trash2, EyeOff, Eye, RefreshCw } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { ArrowLeft, Plus, X, UtensilsCrossed, Pencil, Trash2, EyeOff, Eye, RefreshCw, BookOpen, Minus } from 'lucide-react'
+import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
 interface Piatto {
@@ -10,18 +10,191 @@ interface Piatto {
   prezzo_vendita: number | null
   soglia_food_cost_pct: number | null
   attivo: boolean
-  // dalla view piatti_food_cost
   costo_ingredienti?: number
   food_cost_pct?: number
   margine_euro?: number
   n_ingredienti?: number
 }
 
+interface RigaRicetta {
+  id?: string
+  ingrediente_id: string
+  nome_ingrediente: string
+  quantita: number
+  unita_misura: string
+  opzionale: boolean
+}
+
+interface Ingrediente {
+  id: string
+  nome: string
+  unita_misura: string
+}
+
 const CATEGORIE = ['Antipasto', 'Primo', 'Secondo', 'Contorno', 'Dolce', 'Vini & Bevande', 'Altro']
+const UNITA = ['kg', 'g', 'lt', 'ml', 'pz', 'bt']
 
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />
 }
+
+// ── Modal ricetta ───────────────────────────────────────────────────────────
+
+function RicettaModal({ piatto, onClose }: { piatto: Piatto; onClose: () => void }) {
+  const ristoranteId = useRistorante()
+  const [ricetta, setRicetta]           = useState<RigaRicetta[]>([])
+  const [ingredienti, setIngredienti]   = useState<Ingrediente[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [adding, setAdding]             = useState(false)
+  const [selIngId, setSelIngId]         = useState('')
+  const [selQta, setSelQta]             = useState('')
+  const [selUnita, setSelUnita]         = useState('kg')
+  const [saving, setSaving]             = useState(false)
+  const [errore, setErrore]             = useState<string | null>(null)
+
+  const caricaRicetta = useCallback(async () => {
+    setLoading(true)
+    const [{ data: righe }, { data: ings }] = await Promise.all([
+      supabase
+        .from('piatti_ingredienti')
+        .select('id, ingrediente_id, quantita, unita_misura, opzionale, ingredienti(id, nome, unita_misura)')
+        .eq('piatto_id', piatto.id),
+      supabase
+        .from('ingredienti')
+        .select('id, nome, unita_misura')
+        .order('nome')
+        .limit(200),
+    ])
+    setRicetta(
+      (righe ?? []).map(r => {
+        const ing = Array.isArray(r.ingredienti) ? r.ingredienti[0] : r.ingredienti
+        return { id: r.id, ingrediente_id: r.ingrediente_id, nome_ingrediente: ing?.nome ?? '—', quantita: r.quantita, unita_misura: r.unita_misura, opzionale: r.opzionale }
+      })
+    )
+    setIngredienti(ings ?? [])
+    setLoading(false)
+  }, [piatto.id])
+
+  useEffect(() => { caricaRicetta() }, [caricaRicetta])
+
+  async function aggiungi() {
+    if (!selIngId || !selQta) { setErrore('Seleziona ingrediente e quantità'); return }
+    setSaving(true); setErrore(null)
+    const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/piatti/${piatto.id}/ingredienti`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ingrediente_id: selIngId, quantita: parseFloat(selQta), unita_misura: selUnita }),
+    })
+    setSaving(false)
+    if (!res.ok) { const j = await res.json(); setErrore(j.error ?? 'Errore'); return }
+    setAdding(false); setSelIngId(''); setSelQta(''); setSelUnita('kg')
+    caricaRicetta()
+  }
+
+  async function rimuovi(ingId: string) {
+    await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/piatti/${piatto.id}/ingredienti/${ingId}`, { method: 'DELETE' })
+    setRicetta(prev => prev.filter(r => r.ingrediente_id !== ingId))
+  }
+
+  const ingUsati = new Set(ricetta.map(r => r.ingrediente_id))
+  const ingDisp  = ingredienti.filter(i => !ingUsati.has(i.id))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[88vh] overflow-y-auto">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="font-bold text-caffe text-lg">Ricetta</h2>
+            <p className="text-xs text-maro">{piatto.nome}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : (
+          <>
+            {ricetta.length === 0 && !adding && (
+              <p className="text-sm text-slate-400 text-center py-4">Nessun ingrediente nella ricetta.<br />Aggiungili per calcolare il food cost.</p>
+            )}
+            <div className="space-y-2">
+              {ricetta.map(r => (
+                <div key={r.ingrediente_id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold text-caffe">{r.nome_ingrediente}</p>
+                    <p className="text-xs text-maro">{r.quantita} {r.unita_misura}</p>
+                  </div>
+                  <button onClick={() => rimuovi(r.ingrediente_id)} className="p-1.5 text-rose-400 hover:bg-rose-50 rounded-lg">
+                    <Minus size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {adding ? (
+              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-maro">Aggiungi ingrediente</p>
+                <select
+                  value={selIngId}
+                  onChange={e => {
+                    setSelIngId(e.target.value)
+                    const ing = ingredienti.find(i => i.id === e.target.value)
+                    if (ing) setSelUnita(ing.unita_misura ?? 'kg')
+                  }}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-terra"
+                >
+                  <option value="">— Scegli ingrediente —</option>
+                  {ingDisp.map(i => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.001"
+                    value={selQta}
+                    onChange={e => setSelQta(e.target.value)}
+                    placeholder="Quantità"
+                    className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-terra"
+                  />
+                  <select
+                    value={selUnita}
+                    onChange={e => setSelUnita(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-terra"
+                  >
+                    {UNITA.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                {errore && <p className="text-xs text-rose-600">{errore}</p>}
+                <div className="flex gap-2">
+                  <button onClick={() => { setAdding(false); setErrore(null) }} className="flex-1 border border-slate-200 text-slate-500 rounded-xl py-2 text-sm font-semibold">Annulla</button>
+                  <button onClick={aggiungi} disabled={saving} className="flex-1 bg-terra text-white rounded-xl py-2 text-sm font-semibold disabled:opacity-50">
+                    {saving ? 'Salvo…' : 'Aggiungi'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAdding(true)}
+                className="w-full flex items-center justify-center gap-2 border border-dashed border-terra/40 text-terra font-semibold rounded-xl py-3 text-sm"
+              >
+                <Plus size={15} />
+                Aggiungi ingrediente
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Modal piatto ────────────────────────────────────────────────────────────
 
 function PiattoModal({
   piatto,
@@ -177,21 +350,23 @@ function PiattoModal({
   )
 }
 
+// ── Pagina principale ───────────────────────────────────────────────────────
+
 interface Props {
   onBack: () => void
 }
 
 export default function Menu({ onBack }: Props) {
   const ristoranteId = useRistorante()
-  const [piatti, setPiatti]   = useState<Piatto[]>([])
-  const [loading, setLoading] = useState(true)
-  const [mostraModal, setMostraModal] = useState(false)
-  const [selezionato, setSelezionato] = useState<Piatto | null>(null)
+  const [piatti, setPiatti]             = useState<Piatto[]>([])
+  const [loading, setLoading]           = useState(true)
+  const [mostraModal, setMostraModal]   = useState(false)
+  const [selezionato, setSelezionato]   = useState<Piatto | null>(null)
+  const [ricettaPiatto, setRicettaPiatto] = useState<Piatto | null>(null)
   const [filtroAttivo, setFiltroAttivo] = useState<'tutti' | 'in_carta' | 'non_disp'>('tutti')
 
   const carica = useCallback(() => {
     setLoading(true)
-    // Leggi dalla view piatti_food_cost che include costo calcolato
     supabase
       .from('piatti_food_cost')
       .select('id, ristorante_id, nome, categoria, prezzo_vendita, soglia_food_cost_pct, attivo, costo_ingredienti, food_cost_pct, margine_euro, n_ingredienti')
@@ -302,9 +477,9 @@ export default function Menu({ onBack }: Props) {
             <p className="text-xs font-bold text-maro uppercase tracking-widest mb-2 px-1">{cat}</p>
             <div className="space-y-2">
               {gruppi[cat].map(p => {
-                const fc = p.food_cost_pct ?? 0
+                const fc    = p.food_cost_pct ?? 0
                 const soglia = p.soglia_food_cost_pct ?? 35
-                const fcOk = fc <= soglia
+                const fcOk  = fc <= soglia
 
                 return (
                   <div
@@ -336,18 +511,30 @@ export default function Menu({ onBack }: Props) {
                               FC {fc.toFixed(0)}% {!fcOk && '⚠️'}
                             </span>
                           )}
-                          {p.margine_euro != null && p.n_ingredienti! > 0 && (
+                          {p.margine_euro != null && (p.n_ingredienti ?? 0) > 0 && (
                             <span className="text-xs text-slate-400">
                               margine €{p.margine_euro.toFixed(2)}
                             </span>
                           )}
                           {(p.n_ingredienti ?? 0) === 0 && (
-                            <span className="text-xs text-slate-300 italic">nessun ingrediente</span>
+                            <button
+                              onClick={() => setRicettaPiatto(p)}
+                              className="text-xs text-amber-500 italic underline underline-offset-2"
+                            >
+                              + aggiungi ricetta
+                            </button>
                           )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setRicettaPiatto(p)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"
+                          title="Gestisci ricetta"
+                        >
+                          <BookOpen size={15} />
+                        </button>
                         <button
                           onClick={() => toggleAttivo(p)}
                           className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"
@@ -375,7 +562,7 @@ export default function Menu({ onBack }: Props) {
         <PiattoModal
           piatto={selezionato}
           onClose={() => { setMostraModal(false); setSelezionato(null) }}
-          onSaved={p => {
+          onSaved={() => {
             setMostraModal(false)
             setSelezionato(null)
             carica()
@@ -385,6 +572,13 @@ export default function Menu({ onBack }: Props) {
             setSelezionato(null)
             setPiatti(prev => prev.filter(x => x.id !== id))
           }}
+        />
+      )}
+
+      {ricettaPiatto && (
+        <RicettaModal
+          piatto={ricettaPiatto}
+          onClose={() => { setRicettaPiatto(null); carica() }}
         />
       )}
     </div>
