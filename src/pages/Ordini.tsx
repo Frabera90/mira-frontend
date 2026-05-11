@@ -57,7 +57,24 @@ export default function Ordini({ onNavigate }: OrdiniProps) {
         else setOrdini((data as OrdineRow[]) ?? [])
         setLoading(false)
       })
-  }, [soloUrgenti, tick])
+  }, [ristoranteId, soloUrgenti, tick])
+
+  useEffect(() => {
+    const onFocus = () => carica()
+    window.addEventListener('focus', onFocus)
+
+    const channel = supabase
+      .channel(`ordini-live-${ristoranteId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scorte', filter: `ristorante_id=eq.${ristoranteId}` }, carica)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordini', filter: `ristorante_id=eq.${ristoranteId}` }, carica)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movimenti_scorte', filter: `ristorante_id=eq.${ristoranteId}` }, carica)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      supabase.removeChannel(channel)
+    }
+  }, [carica, ristoranteId])
 
   async function confermaOrdine(o: OrdineRow) {
     setConfermando(o.ingrediente_id)
@@ -171,6 +188,15 @@ export default function Ordini({ onNavigate }: OrdiniProps) {
           <AlertTriangle size={16} className="text-rose-600 shrink-0" />
           <p className="text-sm text-rose-700 font-medium">
             {urgentiCount} prodott{urgentiCount === 1 ? 'o' : 'i'} da ordinare oggi
+          </p>
+        </div>
+      )}
+
+      {!loading && urgentiCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
+          <p className="text-xs font-semibold text-amber-900">Inventory predictor</p>
+          <p className="text-sm text-amber-800 mt-0.5">
+            MIRA sta usando ritmo consumi, scorte e copertura stimata: conferma solo gli ordini che vuoi inviare al fornitore.
           </p>
         </div>
       )}

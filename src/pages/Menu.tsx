@@ -121,17 +121,28 @@ function RicettaModal({ piatto, onClose }: { piatto: Piatto; onClose: () => void
               <p className="text-sm text-slate-400 text-center py-4">Nessun ingrediente nella ricetta.<br />Aggiungili per calcolare il food cost.</p>
             )}
             <div className="space-y-2">
-              {ricetta.map(r => (
+              {ricetta.map(r => {
+                const daCompletare = r.opzionale || Number(r.quantita) <= 0
+                return (
                 <div key={r.ingrediente_id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5">
                   <div>
-                    <p className="text-sm font-semibold text-caffe">{r.nome_ingrediente}</p>
-                    <p className="text-xs text-maro">{r.quantita} {r.unita_misura}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-caffe">{r.nome_ingrediente}</p>
+                      {daCompletare && (
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                          da confermare
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-maro">
+                      {daCompletare ? 'Completa grammatura per food cost' : `${r.quantita} ${r.unita_misura}`}
+                    </p>
                   </div>
                   <button onClick={() => rimuovi(r.ingrediente_id)} className="p-1.5 text-rose-400 hover:bg-rose-50 rounded-lg">
                     <Minus size={15} />
                   </button>
                 </div>
-              ))}
+              )})}
             </div>
 
             {adding ? (

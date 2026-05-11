@@ -69,7 +69,22 @@ export default function Notifiche({ onNotificheChange }: Props) {
       }
       setLoading(false)
     })
-  }, [soloNonLette, onNotificheChange, tick])
+  }, [ristoranteId, soloNonLette, onNotificheChange, tick])
+
+  useEffect(() => {
+    const onFocus = () => carica()
+    window.addEventListener('focus', onFocus)
+
+    const channel = supabase
+      .channel(`notifiche-live-${ristoranteId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifiche', filter: `ristorante_id=eq.${ristoranteId}` }, carica)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      supabase.removeChannel(channel)
+    }
+  }, [carica, ristoranteId])
 
   async function segnaLetta(id: string) {
     await supabase.from('notifiche').update({ letta: true }).eq('id', id)

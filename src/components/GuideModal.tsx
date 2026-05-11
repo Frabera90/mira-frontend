@@ -136,14 +136,30 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   async function salvaMenu() {
     if (!piatti.length) return
     setSavingMenu(true)
-    const rows = piatti.map(p => ({
-      ristorante_id:  ristoranteId,
-      nome:           p.nome.trim(),
-      categoria:      p.categoria,
-      prezzo_vendita: p.prezzo ? Number(p.prezzo) : null,
-      disponibile:    true,
-    }))
-    await supabase.from('piatti').upsert(rows, { onConflict: 'ristorante_id,nome' })
+    for (const p of piatti) {
+      const nome = p.nome.trim()
+      if (!nome) continue
+
+      const payload = {
+        ristorante_id:        ristoranteId,
+        nome,
+        categoria:            p.categoria,
+        prezzo_vendita:       p.prezzo ? Number(p.prezzo) : null,
+        soglia_food_cost_pct: 35,
+        attivo:               true,
+      }
+
+      const { data: existing } = await supabase
+        .from('piatti')
+        .select('id')
+        .eq('ristorante_id', ristoranteId)
+        .ilike('nome', nome)
+        .limit(1)
+        .maybeSingle()
+
+      if (existing?.id) await supabase.from('piatti').update(payload).eq('id', existing.id)
+      else await supabase.from('piatti').insert(payload)
+    }
     setSavingMenu(false)
     setTasks(t => ({ ...t, menu: true }))
     setTimeout(() => setActive(null), 800)
@@ -197,7 +213,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             icon={<Send size={16} className="text-[#229ED9]" />}
             iconBg="bg-[#229ED9]/10"
             title="Collega Telegram"
-            desc="Briefing mattutino, alert scorte e report serale automatici. Parla col bot in italiano — anche in vocale."
+            desc="Briefing mattutino, alert scorte e Report alle 00:30 automatici. Parla col bot in italiano, anche in vocale."
             done={tasks.telegram}
             active={active === 'telegram'}
             onToggle={() => setActive(active === 'telegram' ? null : 'telegram')}
@@ -205,8 +221,8 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             <div className="space-y-3">
               <div className="bg-slate-50 rounded-xl p-3 space-y-2 text-sm">
                 <p className="font-semibold text-caffe">In automatico ogni giorno:</p>
-                <div className="flex gap-2 text-slate-600"><span>☀️</span><span><strong>Briefing mattutino</strong> — ordini urgenti, scadenze, prenotazioni</span></div>
-                <div className="flex gap-2 text-slate-600"><span>📊</span><span><strong>Report serale</strong> — sprechi, carichi, fatture del giorno</span></div>
+                <div className="flex gap-2 text-slate-600"><span>☀️</span><span><strong>Briefing mattutino</strong> — ordini urgenti, scadenze, coperti da chiedere allo chef</span></div>
+                <div className="flex gap-2 text-slate-600"><span>📊</span><span><strong>Report alle 00:30</strong> — sprechi, carichi, fatture del giorno</span></div>
                 <div className="flex gap-2 text-slate-600"><span>🗣️</span><span><strong>Messaggi liberi</strong> — scrivi o manda un vocale al bot</span></div>
               </div>
 

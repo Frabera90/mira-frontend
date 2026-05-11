@@ -135,6 +135,17 @@ export default function Casa({ onNavigate }: CasaProps) {
 
   useEffect(() => { carica() }, [carica])
 
+  const caricaPredictor = useCallback(() => {
+    fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/inventory-predictor`)
+      .then(r => r.json())
+      .then(j => { if (j.ok) setPredictor(j.data ?? []) })
+      .catch(() => {})
+  }, [ristoranteId])
+
+  useEffect(() => {
+    caricaPredictor()
+  }, [caricaPredictor])
+
   useEffect(() => {
     supabase
       .from('piatti_food_cost')
@@ -155,17 +166,31 @@ export default function Casa({ onNavigate }: CasaProps) {
   }, [ristoranteId])
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/inventory-predictor`)
-      .then(r => r.json())
-      .then(j => { if (j.ok) setPredictor(j.data ?? []) })
-      .catch(() => {})
-  }, [ristoranteId])
+    const refresh = () => {
+      carica()
+      caricaPredictor()
+    }
+    window.addEventListener('focus', refresh)
+
+    const channel = supabase
+      .channel(`casa-live-${ristoranteId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scorte', filter: `ristorante_id=eq.${ristoranteId}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movimenti_scorte', filter: `ristorante_id=eq.${ristoranteId}` }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordini', filter: `ristorante_id=eq.${ristoranteId}` }, refresh)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('focus', refresh)
+      supabase.removeChannel(channel)
+    }
+  }, [carica, caricaPredictor, ristoranteId])
 
   const ora   = new Date().getHours()
   const saluto = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'
   const oggi  = new Date().toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long',
   })
+  const copertiPrevisti = briefing?.prenotazioni.reduce((s, p) => s + (p.coperti ?? 0), 0) ?? 0
 
   return (
     <div className="p-4 space-y-5">
@@ -215,8 +240,8 @@ export default function Casa({ onNavigate }: CasaProps) {
             colorKey="amber"
           />
           <KpiCard
-            value={briefing.prenotazioni.length}
-            label="Prenotazioni"
+            value={copertiPrevisti}
+            label="Coperti"
             Icon={CalendarDays}
             colorKey="indigo"
             onClick={() => onNavigate?.('prenotazioni')}
@@ -338,7 +363,7 @@ export default function Casa({ onNavigate }: CasaProps) {
             { icon: UtensilsCrossed, label: 'Menu',        page: 'menu',         color: 'bg-terra/10 text-terra' },
             { icon: Truck,           label: 'Fornitori',   page: 'fornitori',    color: 'bg-indigo-50 text-indigo-600' },
             { icon: FileSpreadsheet, label: 'Vendite CSV', page: 'vendite-csv',  color: 'bg-sky-50 text-sky-600' },
-            { icon: CalendarDays,    label: 'Prenotazioni',page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
+            { icon: CalendarDays,    label: 'Coperti',      page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
             { icon: ChefHat,         label: 'Food Cost',   page: 'food-cost',    color: 'bg-emerald-50 text-emerald-600' },
           ].map(({ icon: Icon, label, page, color }) => (
             <button
@@ -408,13 +433,13 @@ export default function Casa({ onNavigate }: CasaProps) {
             ))}
           </Section>
 
-          {/* Prenotazioni */}
+          {/* Coperti previsti */}
           <Section
-            title="Prenotazioni"
+            title="Coperti previsti"
             Icon={CalendarDays}
-            count={briefing.prenotazioni.length}
+            count={copertiPrevisti}
             accent="indigo"
-            empty="Nessuna prenotazione"
+            empty="Nessun coperto indicato"
           >
             {briefing.prenotazioni.map((p, i) => (
               <Row key={i}>
