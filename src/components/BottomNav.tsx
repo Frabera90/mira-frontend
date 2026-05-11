@@ -1,12 +1,12 @@
-import { LayoutDashboard, Package, Bot, ShoppingCart, Bell } from 'lucide-react'
+import { Home, Package, ReceiptText, UtensilsCrossed, ClipboardCheck } from 'lucide-react'
 import type { Page } from '../App'
 
 const tabs: { id: Page; label: string; Icon: React.ElementType }[] = [
-  { id: 'casa',       label: 'Dashboard', Icon: LayoutDashboard },
-  { id: 'magazzino',  label: 'Scorte',    Icon: Package },
-  { id: 'assistente', label: 'MIRA',      Icon: Bot },
-  { id: 'ordini',     label: 'Ordini',    Icon: ShoppingCart },
-  { id: 'notifiche',  label: 'Avvisi',    Icon: Bell },
+  { id: 'casa',        label: 'Oggi',          Icon: Home },
+  { id: 'magazzino',   label: 'Scorte',        Icon: Package },
+  { id: 'fattura',     label: 'Fatture',       Icon: ReceiptText },
+  { id: 'menu',        label: 'Menu',          Icon: UtensilsCrossed },
+  { id: 'vendite-csv', label: 'Fine servizio', Icon: ClipboardCheck },
 ]
 
 interface Props {
@@ -24,12 +24,12 @@ export default function BottomNav({ active, onChange, badge = 0 }: Props) {
           <button
             key={id}
             onClick={() => onChange(id)}
-            className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 text-[10px] font-medium transition-colors relative ${
+            className={`flex-1 flex flex-col items-center py-2.5 gap-1 text-[10px] font-bold transition-colors relative ${
               isActive ? 'text-terra' : 'text-slate-400'
             }`}
           >
-            <Icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
-            <span>{label}</span>
+            <Icon size={22} strokeWidth={isActive ? 2.6 : 2} />
+            <span className="leading-tight text-center">{label}</span>
             {id === 'notifiche' && badge > 0 && (
               <span className="absolute top-1.5 right-[14%] bg-rose-500 text-white text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
                 {badge > 9 ? '9+' : badge}

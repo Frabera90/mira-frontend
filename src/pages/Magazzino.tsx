@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { RefreshCw, Plus, Search, ChevronRight, X, ScanLine, ArrowDown, ArrowUp, Pencil, Trash2, ArrowRightLeft, History, ClipboardList, Settings, SlidersHorizontal, Flame, Leaf, Snowflake, Package, Wine, Star } from 'lucide-react'
+import { RefreshCw, Plus, Search, ChevronRight, X, ArrowDown, ArrowUp, Pencil, Trash2, ArrowRightLeft, History, ClipboardList, Settings, SlidersHorizontal, Flame, Leaf, Snowflake, Package, Wine, Star } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -783,15 +783,6 @@ export default function Magazzino({ onNavigate }: MagazzinoProps) {
           <p className="text-sm text-maro mt-0.5">{scorte.length} ingredienti · {critici} critici</p>
         </div>
         <div className="flex items-center gap-2">
-          {onNavigate && (
-            <button
-              onClick={() => onNavigate('fattura')}
-              className="p-2 rounded-xl text-maro hover:bg-slate-100 active:scale-90 transition-all"
-              title="Scansiona fattura"
-            >
-              <ScanLine size={18} />
-            </button>
-          )}
           <button
             onClick={() => setAggiungi(true)}
             className="w-9 h-9 bg-terra text-white rounded-xl flex items-center justify-center active:scale-90 transition-transform"
@@ -880,9 +871,27 @@ export default function Magazzino({ onNavigate }: MagazzinoProps) {
         })}
 
         {!loading && righe.length === 0 && (
-          <p className="text-center text-slate-400 py-16 font-medium">
-            {cerca ? `Nessun risultato per "${cerca}"` : 'Nessun ingrediente'}
-          </p>
+          cerca ? (
+            <p className="text-center text-slate-400 py-16 font-medium">
+              Nessun risultato per "{cerca}"
+            </p>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto mb-4">
+                <Package size={28} />
+              </div>
+              <p className="text-lg font-bold text-caffe">Magazzino vuoto</p>
+              <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+                Le scorte arrivano dalle fatture oppure puoi aggiungere un prodotto a mano.
+              </p>
+              <button
+                onClick={() => setAggiungi(true)}
+                className="mt-5 w-full bg-terra text-white font-semibold rounded-xl py-3.5"
+              >
+                Aggiungi prodotto a mano
+              </button>
+            </div>
+          )
         )}
       </div>
 

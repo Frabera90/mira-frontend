@@ -31,8 +31,10 @@ interface Ingrediente {
   unita_misura: string
 }
 
-const CATEGORIE = ['Antipasto', 'Primo', 'Secondo', 'Contorno', 'Dolce', 'Vini & Bevande', 'Altro']
+const CATEGORIE = ['Antipasto', 'Primo', 'Secondo', 'Contorno', 'Dolce', 'Bevanda', 'Vini & Bevande', 'Altro']
 const UNITA = ['kg', 'g', 'lt', 'ml', 'pz', 'bt']
+const ACCEPTED_AI_FILES = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
+const SUPPORTED_AI_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'])
 
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />
@@ -260,19 +262,19 @@ function PiattoModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
         <div className="flex justify-between items-center">
-          <h2 className="font-bold text-caffe text-lg">{isNew ? 'Nuovo piatto' : 'Modifica piatto'}</h2>
+          <h2 className="font-bold text-caffe text-lg">{isNew ? 'Nuovo prodotto' : 'Modifica prodotto'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
             <X size={18} />
           </button>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Nome piatto *</label>
+          <label className="block text-xs font-semibold text-maro mb-1.5">Nome piatto o bevanda *</label>
           <input
             type="text"
             value={nome}
             onChange={e => setNome(e.target.value)}
-            placeholder="es. Branzino all'acqua pazza"
+            placeholder="es. Branzino all'acqua pazza, Calice Prosecco"
             autoFocus
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
           />
@@ -409,6 +411,10 @@ export default function Menu({ onBack }: Props) {
   }, [carica, ristoranteId])
 
   async function analizzaMenu(file: File) {
+    if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
+      setScanErrore('Formato non supportato. Usa JPG, PNG, WEBP, GIF o PDF. Se la foto e in HEIC, esportala come JPG.')
+      return
+    }
     setScanMenu(true)
     setScanErrore(null)
     try {
@@ -466,34 +472,22 @@ export default function Menu({ onBack }: Props) {
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-semibold text-caffe">Menu</h1>
+            <h1 className="text-xl font-semibold text-caffe">Menu e listino</h1>
             {!loading && (
               <p className="text-sm text-maro mt-0.5">{totInCarta} in carta · {piatti.length} totali</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <label className="w-9 h-9 bg-white border border-slate-200 text-maro rounded-xl flex items-center justify-center active:scale-90 transition-transform">
-            {scanMenu ? <Loader2 size={17} className="animate-spin" /> : <Upload size={17} />}
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={e => {
-                const f = e.target.files?.[0]
-                if (f) analizzaMenu(f)
-                e.target.value = ''
-              }}
-            />
-          </label>
           <button onClick={carica} className="p-2 rounded-xl text-maro hover:bg-slate-100 active:scale-90 transition-all">
             <RefreshCw size={18} />
           </button>
           <button
             onClick={() => { setSelezionato(null); setMostraModal(true) }}
-            className="w-9 h-9 bg-terra text-white rounded-xl flex items-center justify-center active:scale-90 transition-transform"
+            className="bg-terra text-white rounded-xl px-3 py-2 flex items-center gap-1.5 active:scale-90 transition-transform text-sm font-semibold"
           >
-            <Plus size={18} />
+            <Plus size={16} />
+            Aggiungi
           </button>
         </div>
       </div>
@@ -502,6 +496,29 @@ export default function Menu({ onBack }: Props) {
         <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-sm mb-4">
           {scanErrore}
         </div>
+      )}
+
+      {!loading && categoriePresenti.length > 0 && (
+        <label className="w-full bg-white border border-slate-100 rounded-2xl p-3 mb-4 text-left shadow-sm flex items-center gap-3 active:scale-[0.99] transition-transform cursor-pointer">
+          <div className="w-10 h-10 rounded-xl bg-caffe/10 text-caffe flex items-center justify-center shrink-0">
+            {scanMenu ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-sm text-caffe">Aggiorna da foto/PDF</p>
+            <p className="text-xs text-slate-500 mt-0.5">Leggi menu, vini o listino</p>
+          </div>
+          <input
+            type="file"
+            accept={ACCEPTED_AI_FILES}
+            className="hidden"
+            disabled={scanMenu}
+            onChange={e => {
+              const f = e.target.files?.[0]
+              if (f) analizzaMenu(f)
+              e.target.value = ''
+            }}
+          />
+        </label>
       )}
 
       {/* Filtri */}
@@ -532,15 +549,36 @@ export default function Menu({ onBack }: Props) {
       )}
 
       {!loading && categoriePresenti.length === 0 && (
-        <div className="text-center py-16">
-          <UtensilsCrossed size={40} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-400 font-medium">Nessun piatto nel menu</p>
-          <button
-            onClick={() => { setSelezionato(null); setMostraModal(true) }}
-            className="mt-4 text-sm text-terra font-medium border border-terra/30 px-4 py-2 rounded-full"
-          >
-            Aggiungi il primo piatto
-          </button>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-caffe/10 text-caffe flex items-center justify-center mx-auto mb-4">
+            <UtensilsCrossed size={30} />
+          </div>
+          <p className="text-lg font-bold text-caffe">Carica menu o listino</p>
+          <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+            Scansiona una foto o un PDF per creare subito piatti, vini e bevande.
+          </p>
+          <div className="grid grid-cols-1 gap-2 mt-5">
+            <label className="w-full bg-caffe text-white font-semibold rounded-xl py-3.5 cursor-pointer">
+              Scansiona menu/listino
+              <input
+                type="file"
+                accept={ACCEPTED_AI_FILES}
+                className="hidden"
+                disabled={scanMenu}
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  if (f) analizzaMenu(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            <button
+              onClick={() => { setSelezionato(null); setMostraModal(true) }}
+              className="w-full text-sm text-terra font-semibold border border-terra/30 rounded-xl py-3"
+            >
+              Aggiungi a mano
+            </button>
+          </div>
         </div>
       )}
 

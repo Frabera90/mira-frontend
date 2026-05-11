@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   RefreshCw, AlertTriangle, Clock, Users, TrendingUp,
   Package, CalendarDays, Settings, ChefHat, ChevronRight,
-  Camera, ShoppingCart, Send, UtensilsCrossed, Truck, FileSpreadsheet,
+  Camera, ShoppingCart, UtensilsCrossed, Truck,
+  ClipboardCheck,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -279,6 +280,31 @@ export default function Casa({ onNavigate }: CasaProps) {
         </button>
       )}
 
+      {onNavigate && (
+        <div className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm">
+          <p className="text-xs font-bold text-maro uppercase tracking-wide mb-2">Azioni rapide</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { Icon: Camera, label: 'Fattura', desc: 'Scorte', page: 'fattura', tone: 'text-terra bg-terra/10' },
+              { Icon: UtensilsCrossed, label: 'Menu', desc: 'Listino', page: 'menu', tone: 'text-caffe bg-slate-100' },
+              { Icon: ClipboardCheck, label: 'Fine', desc: 'Servizio', page: 'vendite-csv', tone: 'text-amber-700 bg-amber-50' },
+            ].map(({ Icon, label, desc, page, tone }) => (
+              <button
+                key={page}
+                onClick={() => onNavigate(page)}
+                className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 text-center active:scale-95 transition-transform"
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1 ${tone}`}>
+                  <Icon size={17} />
+                </div>
+                <p className="text-xs font-bold text-caffe">{label}</p>
+                <p className="text-[10px] text-slate-400">{desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {errore && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
           <strong>Errore:</strong> {errore}
@@ -317,21 +343,21 @@ export default function Casa({ onNavigate }: CasaProps) {
             {[
               {
                 n: '1', Icon: Camera, color: 'bg-terra/10 text-terra',
-                titolo: 'Fotografa le tue fatture',
-                desc: 'Vai in "Magazzino" → "Scansiona fattura". L\'AI legge fornitori, ingredienti e prezzi automaticamente.',
-                cta: 'Vai a Magazzino', page: 'magazzino',
+                titolo: 'Scansiona una fattura',
+                desc: 'Tocca Fatture: l\'AI legge fornitori, ingredienti, quantita e prezzi automaticamente.',
+                cta: 'Scansiona fattura', page: 'fattura',
               },
               {
-                n: '2', Icon: ShoppingCart, color: 'bg-indigo-100 text-indigo-600',
-                titolo: 'Vedi i suggerimenti ordine',
-                desc: 'Dopo aver caricato almeno 2 fatture, MIRA sa cosa ordinare e quando.',
+                n: '2', Icon: UtensilsCrossed, color: 'bg-indigo-100 text-indigo-600',
+                titolo: 'Scansiona il menu',
+                desc: 'Tocca Menu e carica una foto/PDF: MIRA crea piatti, vini e bevande per calcolare margini e food cost.',
+                cta: 'Scansiona menu', page: 'menu',
+              },
+              {
+                n: '3', Icon: ShoppingCart, color: 'bg-amber-100 text-amber-700',
+                titolo: 'Controlla gli ordini',
+                desc: 'Quando scorte e menu sono caricati, MIRA suggerisce cosa ordinare ai fornitori.',
                 cta: 'Vai agli Ordini', page: 'ordini',
-              },
-              {
-                n: '3', Icon: Send, color: 'bg-[#229ED9]/10 text-[#229ED9]',
-                titolo: 'Collega Telegram',
-                desc: 'Ogni mattina ricevi un briefing automatico. Puoi anche parlare col bot in vocale.',
-                cta: 'Impostazioni', page: 'impostazioni',
               },
             ].map(({ n, Icon, color, titolo, desc, cta, page }) => (
               <div key={n} className="flex gap-3 items-start">
@@ -360,9 +386,8 @@ export default function Casa({ onNavigate }: CasaProps) {
       {onNavigate && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           {[
-            { icon: UtensilsCrossed, label: 'Menu',        page: 'menu',         color: 'bg-terra/10 text-terra' },
             { icon: Truck,           label: 'Fornitori',   page: 'fornitori',    color: 'bg-indigo-50 text-indigo-600' },
-            { icon: FileSpreadsheet, label: 'Vendite CSV', page: 'vendite-csv',  color: 'bg-sky-50 text-sky-600' },
+            { icon: ClipboardCheck,  label: 'Fine servizio', page: 'vendite-csv',  color: 'bg-amber-50 text-amber-700' },
             { icon: CalendarDays,    label: 'Coperti',      page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
             { icon: ChefHat,         label: 'Food Cost',   page: 'food-cost',    color: 'bg-emerald-50 text-emerald-600' },
           ].map(({ icon: Icon, label, page, color }) => (

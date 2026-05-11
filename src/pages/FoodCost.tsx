@@ -250,8 +250,8 @@ function DettaglioSheet({
 
   useEffect(() => {
     supabase
-      .from('ricette')
-      .select('id, quantita, ingrediente_id, ingredienti(nome, unita_misura)')
+      .from('piatti_ingredienti')
+      .select('id, quantita, unita_misura, ingrediente_id, ingredienti(nome, unita_misura)')
       .eq('piatto_id', piatto.id)
       .then(async ({ data: righe }) => {
         const ingIds = (righe ?? []).map(r => r.ingrediente_id)
@@ -270,7 +270,7 @@ function DettaglioSheet({
             id:               r.id,
             ingrediente_id:   r.ingrediente_id,
             ingrediente_nome: ing?.nome ?? '—',
-            um:               ing?.unita_misura ?? '',
+            um:               r.unita_misura ?? ing?.unita_misura ?? '',
             quantita:         r.quantita,
             prezzo_unitario:  prezziMap.get(r.ingrediente_id) ?? null,
           }
@@ -311,10 +311,12 @@ function DettaglioSheet({
     const qty = parseFloat(addQty.replace(',', '.'))
     if (!qty || qty <= 0) return
     setAddingId(opzione.id)
-    const { error } = await supabase.from('ricette').upsert({
+    const { error } = await supabase.from('piatti_ingredienti').upsert({
       piatto_id:      piatto.id,
       ingrediente_id: opzione.id,
       quantita:       qty,
+      unita_misura:   opzione.um || 'kg',
+      opzionale:      false,
     }, { onConflict: 'piatto_id,ingrediente_id' })
     if (!error) {
       setRicetta(prev => {
@@ -337,7 +339,7 @@ function DettaglioSheet({
   }
 
   async function rimuoviIngrediente(id: string) {
-    await supabase.from('ricette').delete().eq('id', id)
+    await supabase.from('piatti_ingredienti').delete().eq('id', id)
     setRicetta(prev => prev.filter(r => r.id !== id))
   }
 

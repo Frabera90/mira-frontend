@@ -5,6 +5,9 @@ import {
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 
+const ACCEPTED_AI_FILES = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
+const SUPPORTED_AI_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'])
+
 interface Props {
   ristoranteId: string
   onNavigate: (page: string) => void
@@ -28,7 +31,7 @@ const CATEGORIE = ['antipasto', 'primo', 'secondo', 'contorno', 'dessert', 'beva
 export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   const [tasks, setTasks]         = useState<Tasks>({ telegram: false, fattura: false, menu: false })
   const [loaded, setLoaded]       = useState(false)
-  const [open, setOpen]           = useState(true)
+  const [open, setOpen]           = useState(() => localStorage.getItem('mira_guide_dismissed') !== 'true')
   const [active, setActive]       = useState<keyof Tasks | null>('telegram')
   const fileRef                   = useRef<HTMLInputElement>(null)
 
@@ -99,6 +102,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   // ── Menu AI ───────────────────────────────────────────────────
 
   async function analizzaMenu(file: File) {
+    if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
+      setErrMenu('Formato non supportato. Usa JPG, PNG, WEBP, GIF o PDF. Se la foto e in HEIC, esportala come JPG.')
+      setAnalisiMenu('err')
+      return
+    }
     setAnalisiMenu('loading')
     setErrMenu('')
     const reader = new FileReader()
@@ -167,6 +175,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
 
   // ── Render ────────────────────────────────────────────────────
 
+  function chiudiGuida() {
+    localStorage.setItem('mira_guide_dismissed', 'true')
+    setOpen(false)
+  }
+
   if (!open) {
     return (
       <button
@@ -181,7 +194,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+      <div className="absolute inset-0 bg-black/40" onClick={chiudiGuida} />
 
       {/* Modal */}
       <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl max-h-[90vh] flex flex-col">
@@ -191,7 +204,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             <h2 className="text-lg font-bold text-caffe">Configura MIRA</h2>
             <p className="text-xs text-slate-400 mt-0.5">{done} di {total} completati</p>
           </div>
-          <button onClick={() => setOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
+          <button onClick={chiudiGuida} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl">
             <X size={18} />
           </button>
         </div>
@@ -303,13 +316,13 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             onToggle={() => setActive(active === 'fattura' ? null : 'fattura')}
           >
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">Vai alla sezione <strong>Magazzino</strong> → tocca <strong>"Scansiona fattura"</strong>. Poi fotografa o carica un PDF di una qualsiasi fattura fornitore.</p>
+              <p className="text-sm text-slate-600">Vai alla sezione <strong>Fatture</strong>. Poi fotografa o carica un PDF di una qualsiasi fattura fornitore.</p>
               <button
                 onClick={() => { setOpen(false); onNavigate('magazzino') }}
                 className="w-full bg-terra text-white font-semibold rounded-xl py-3 text-sm flex items-center justify-center gap-2"
               >
                 <Camera size={15} />
-                Vai a Magazzino → Scansiona fattura
+                Vai a Fatture
               </button>
             </div>
           </TaskCard>
@@ -319,8 +332,8 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             id="menu"
             icon={<ChefHat size={16} className="text-indigo-600" />}
             iconBg="bg-indigo-100"
-            title="Inserisci il menu"
-            desc="Aggiungi i tuoi piatti per calcolare automaticamente il food cost e tenere traccia della marginalità."
+            title="Inserisci menu o listino"
+            desc="Aggiungi piatti, vini e bevande per calcolare automaticamente margini, food cost e scarico scorte."
             done={tasks.menu}
             active={active === 'menu'}
             onToggle={() => setActive(active === 'menu' ? null : 'menu')}
@@ -328,11 +341,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
             <div className="space-y-4">
               {/* AI: fotografa menu */}
               <div className="bg-slate-50 rounded-xl p-3">
-                <p className="text-xs font-semibold text-maro mb-2">Fotografa il menu — l'AI estrae tutto</p>
+                <p className="text-xs font-semibold text-maro mb-2">Fotografa menu o listino — l'AI estrae tutto</p>
                 {analisiMenu === 'loading' && (
                   <div className="flex items-center gap-2 py-2">
                     <Loader2 size={16} className="animate-spin text-terra" />
-                    <p className="text-sm text-slate-600">Leggo il menu…</p>
+                    <p className="text-sm text-slate-600">Leggo menu e listino…</p>
                   </div>
                 )}
                 {analisiMenu === 'ok' && (
@@ -350,13 +363,13 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                     disabled={analisiMenu === 'loading'}
                     className="w-full border border-dashed border-slate-300 rounded-xl py-2.5 text-sm text-slate-500 hover:border-terra hover:text-terra disabled:opacity-50"
                   >
-                    📷 Fotografa o carica foto/PDF del menu
+                    📷 Fotografa o carica foto/PDF del menu/listino
                   </button>
                 )}
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*,application/pdf"
+                  accept={ACCEPTED_AI_FILES}
                   className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) analizzaMenu(f); e.target.value = '' }}
                 />
@@ -376,7 +389,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                     type="text"
                     value={nuovoPiatto.nome}
                     onChange={e => setNuovoPiatto(p => ({ ...p, nome: e.target.value }))}
-                    placeholder="Nome piatto"
+                    placeholder="Nome piatto o bevanda"
                     className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-terra"
                   />
                   <input

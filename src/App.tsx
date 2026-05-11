@@ -133,7 +133,7 @@ export default function App() {
     setPage(p as Page)
   }
 
-  const navPages: Page[] = ['casa', 'magazzino', 'assistente', 'ordini', 'notifiche']
+  const navPages: Page[] = ['casa', 'magazzino', 'fattura', 'menu', 'vendite-csv']
 
   return (
     <RistoranteContext.Provider value={ristoranteId}>
@@ -177,7 +177,7 @@ export default function App() {
           {page === 'casa'           && <Casa onNavigate={navigate} />}
           {page === 'magazzino'      && <Magazzino onNavigate={navigate} />}
           {page === 'ordini'         && <Ordini onNavigate={navigate} />}
-          {page === 'fattura'        && <Fattura onBack={() => setPage('magazzino')} />}
+          {page === 'fattura'        && <Fattura />}
           {page === 'assistente'     && <Assistente onClose={() => setPage('casa')} />}
           {page === 'prenotazioni'   && <Prenotazioni onBack={() => setPage('casa')} />}
           {page === 'fornitori'      && <Fornitori onBack={() => setPage('ordini')} />}

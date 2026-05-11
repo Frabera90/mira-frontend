@@ -26,6 +26,9 @@ interface Props {
   onBack?: () => void
 }
 
+const ACCEPTED_AI_FILES = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
+const SUPPORTED_AI_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'])
+
 export default function Fattura({ onBack }: Props) {
   const ristoranteId = useRistorante()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -39,6 +42,11 @@ export default function Fattura({ onBack }: Props) {
   const [ingredientiCaricati, setIngredientiCaricati] = useState<number>(0)
 
   function handleFile(file: File) {
+    if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
+      setErrore('Formato non supportato. Usa JPG, PNG, WEBP, GIF o PDF. Se la foto e in HEIC, esportala come JPG.')
+      setFase('errore')
+      return
+    }
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
     setPreviewType(file.type)
@@ -63,7 +71,7 @@ export default function Fattura({ onBack }: Props) {
     e.preventDefault()
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
-    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) handleFile(file)
+    if (file) handleFile(file)
   }
 
   async function analizza() {
@@ -110,7 +118,7 @@ export default function Fattura({ onBack }: Props) {
         <div>
           <h1 className="text-xl font-semibold text-caffe">Scansiona fattura</h1>
           <p className="text-sm text-maro mt-0.5">
-            Fotografa o carica una fattura — l'AI estrae tutto automaticamente
+            Tocca il riquadro, scegli una foto o un PDF. MIRA carica scorte e prezzi.
           </p>
         </div>
       </div>
@@ -128,20 +136,27 @@ export default function Fattura({ onBack }: Props) {
               : 'border-slate-200 bg-white hover:border-terra hover:bg-slate-50'
           }`}
         >
-          <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">
-            <Upload size={24} className="text-slate-400" />
+          <div className="w-16 h-16 bg-terra/10 rounded-2xl flex items-center justify-center">
+            <Upload size={30} className="text-terra" />
           </div>
           <div className="text-center">
-            <p className="font-semibold text-caffe">Trascina qui o tocca per scegliere</p>
-            <p className="text-xs text-slate-400 mt-1">JPG, PNG, PDF — galleria o fotocamera · max 10 MB</p>
+            <p className="font-bold text-caffe text-lg">Tocca qui per scegliere la fattura</p>
+            <p className="text-sm text-slate-500 mt-1">Foto, PDF, galleria o fotocamera</p>
+            <p className="text-xs text-slate-400 mt-1">JPG, PNG, WEBP, GIF o PDF</p>
           </div>
           <input
             ref={inputRef}
             type="file"
-            accept="image/*,application/pdf"
+            accept={ACCEPTED_AI_FILES}
             onChange={selezionaFile}
             className="hidden"
           />
+        </div>
+      )}
+
+      {fase === 'errore' && errore && !previewUrl && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
+          <strong>Errore:</strong> {errore}
         </div>
       )}
 
@@ -151,7 +166,7 @@ export default function Fattura({ onBack }: Props) {
           <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
             {previewType === 'application/pdf' ? (
               <object data={previewUrl} type="application/pdf" className="w-full h-72">
-                <div className="p-6 text-center text-sm text-slate-500">PDF selezionato. Premi Analizza con AI.</div>
+                <div className="p-6 text-center text-sm text-slate-500">PDF selezionato. Premi Leggi fattura.</div>
               </object>
             ) : (
               <img src={previewUrl} alt="Fattura" className="w-full object-contain max-h-72 bg-slate-50" />
@@ -170,14 +185,14 @@ export default function Fattura({ onBack }: Props) {
               className="flex-1 flex items-center justify-center gap-2 border border-slate-200 text-slate-600 rounded-xl py-3 text-sm font-medium hover:bg-slate-50"
             >
               <RotateCcw size={15} />
-              Altra foto
+              Cambia file
             </button>
             <button
               onClick={analizza}
               className="flex-1 flex items-center justify-center gap-2 bg-terra text-white rounded-xl py-3 text-sm font-semibold"
             >
               <FileImage size={15} />
-              Analizza con AI
+              Leggi fattura
             </button>
           </div>
         </div>
