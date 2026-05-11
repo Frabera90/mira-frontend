@@ -379,19 +379,22 @@ export default function Menu({ onBack }: Props) {
   const [filtroAttivo, setFiltroAttivo] = useState<'tutti' | 'in_carta' | 'non_disp'>('tutti')
   const [scanMenu, setScanMenu] = useState(false)
   const [scanErrore, setScanErrore] = useState<string | null>(null)
+  const [scanEsito, setScanEsito] = useState<{
+    totale: number
+    ingredienti: number
+    ricette: number
+  } | null>(null)
 
-  const carica = useCallback(() => {
+  const carica = useCallback(async () => {
     setLoading(true)
-    supabase
+    const { data, error } = await supabase
       .from('piatti_food_cost')
       .select('id, ristorante_id, nome, categoria, prezzo_vendita, soglia_food_cost_pct, attivo, costo_ingredienti, food_cost_pct, margine_euro, n_ingredienti')
       .eq('ristorante_id', ristoranteId)
       .order('categoria')
       .order('nome')
-      .then(({ data, error }) => {
-        if (!error) setPiatti((data as Piatto[]) ?? [])
-        setLoading(false)
-      })
+    if (!error) setPiatti((data as Piatto[]) ?? [])
+    setLoading(false)
   }, [ristoranteId])
 
   useEffect(() => { carica() }, [carica])
@@ -413,10 +416,12 @@ export default function Menu({ onBack }: Props) {
   async function analizzaMenu(file: File) {
     if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
       setScanErrore('Formato non supportato. Usa JPG, PNG, WEBP, GIF o PDF. Se la foto e in HEIC, esportala come JPG.')
+      setScanEsito(null)
       return
     }
     setScanMenu(true)
     setScanErrore(null)
+    setScanEsito(null)
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
@@ -433,7 +438,12 @@ export default function Menu({ onBack }: Props) {
       })
       const json = await res.json()
       if (!json.ok) throw new Error(json.error ?? 'Errore lettura menu')
-      carica()
+      setScanEsito({
+        totale: json.data?.totale ?? 0,
+        ingredienti: json.data?.ingredienti_creati ?? 0,
+        ricette: json.data?.ricette_suggerite ?? 0,
+      })
+      await carica()
     } catch (err) {
       setScanErrore(err instanceof Error ? err.message : 'Errore di rete')
     } finally {
@@ -492,9 +502,39 @@ export default function Menu({ onBack }: Props) {
         </div>
       </div>
 
-      {scanErrore && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-sm mb-4">
-          {scanErrore}
+      {(scanMenu || scanErrore || scanEsito) && (
+        <div className={`rounded-2xl border p-4 mb-4 ${
+          scanErrore
+            ? 'bg-rose-50 border-rose-200 text-rose-700'
+            : scanMenu
+            ? 'bg-white border-slate-200 text-caffe'
+            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+        }`}>
+          {scanMenu && (
+            <div className="flex items-center gap-3">
+              <Loader2 size={18} className="animate-spin text-terra shrink-0" />
+              <div>
+                <p className="text-sm font-semibold">Sto leggendo menu/listino</p>
+                <p className="text-xs text-slate-500 mt-0.5">Rimani qui: appena finisce ti dico cosa ho caricato.</p>
+              </div>
+            </div>
+          )}
+          {scanErrore && (
+            <div>
+              <p className="text-sm font-semibold">Non sono riuscita a leggere il menu</p>
+              <p className="text-xs mt-1">{scanErrore}</p>
+            </div>
+          )}
+          {scanEsito && !scanErrore && !scanMenu && (
+            <div>
+              <p className="text-sm font-semibold">Menu aggiornato</p>
+              <p className="text-xs mt-1">
+                {scanEsito.totale > 0
+                  ? `${scanEsito.totale} prodotti caricati. ${scanEsito.ricette} ricette suggerite, ${scanEsito.ingredienti} nuovi ingredienti.`
+                  : 'Ho letto il file, ma non ho trovato nuovi prodotti. Puoi riprovare con una foto piu nitida.'}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -504,8 +544,8 @@ export default function Menu({ onBack }: Props) {
             {scanMenu ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
           </div>
           <div className="flex-1">
-            <p className="font-bold text-sm text-caffe">Aggiorna da foto/PDF</p>
-            <p className="text-xs text-slate-500 mt-0.5">Leggi menu, vini o listino</p>
+            <p className="font-bold text-sm text-caffe">{scanMenu ? 'Lettura in corso...' : 'Aggiorna da foto/PDF'}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{scanMenu ? 'Non uscire: sto caricando i prodotti' : 'Leggi menu, vini o listino'}</p>
           </div>
           <input
             type="file"
@@ -558,8 +598,11 @@ export default function Menu({ onBack }: Props) {
             Scansiona una foto o un PDF per creare subito piatti, vini e bevande.
           </p>
           <div className="grid grid-cols-1 gap-2 mt-5">
-            <label className="w-full bg-caffe text-white font-semibold rounded-xl py-3.5 cursor-pointer">
-              Scansiona menu/listino
+            <label className={`w-full font-semibold rounded-xl py-3.5 cursor-pointer flex items-center justify-center gap-2 ${
+              scanMenu ? 'bg-caffe/70 text-white pointer-events-none' : 'bg-caffe text-white'
+            }`}>
+              {scanMenu && <Loader2 size={16} className="animate-spin" />}
+              {scanMenu ? 'Lettura menu in corso...' : 'Scansiona menu/listino'}
               <input
                 type="file"
                 accept={ACCEPTED_AI_FILES}
