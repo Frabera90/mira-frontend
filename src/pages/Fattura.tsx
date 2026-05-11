@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Upload, FileImage, RotateCcw, CheckCircle, Loader2, CalendarDays, Hash, ArrowLeft, ChevronRight } from 'lucide-react'
 import { BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -18,6 +18,14 @@ interface FatturaEstratta {
   totale_fattura: number
   iva_totale: number
   righe: Riga[]
+}
+interface FatturaStorico {
+  id: string
+  numero_fattura: string | null
+  data_fattura: string
+  totale_euro: number
+  totale_iva: number | null
+  fornitori: { nome: string } | { nome: string }[] | null
 }
 
 type Fase = 'idle' | 'preview' | 'analisi' | 'risultato' | 'errore'
@@ -40,6 +48,21 @@ export default function Fattura({ onBack }: Props) {
   const [errore, setErrore] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [ingredientiCaricati, setIngredientiCaricati] = useState<number>(0)
+  const [storico, setStorico] = useState<FatturaStorico[]>([])
+  const [loadingStorico, setLoadingStorico] = useState(true)
+
+  const caricaStorico = useCallback(async () => {
+    setLoadingStorico(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/fatture`)
+      const json = await res.json()
+      setStorico(json.ok ? json.data ?? [] : [])
+    } finally {
+      setLoadingStorico(false)
+    }
+  }, [ristoranteId])
+
+  useEffect(() => { caricaStorico() }, [caricaStorico])
 
   function handleFile(file: File) {
     if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
@@ -90,6 +113,7 @@ export default function Fattura({ onBack }: Props) {
       setEstratti(json.data.estratti)
       setIngredientiCaricati(json.data.ingredienti_caricati ?? 0)
       setFase('risultato')
+      caricaStorico()
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore di rete')
       setFase('errore')
@@ -151,6 +175,45 @@ export default function Fattura({ onBack }: Props) {
             onChange={selezionaFile}
             className="hidden"
           />
+        </div>
+      )}
+
+      {fase === 'idle' && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-caffe">Fatture caricate</h2>
+            <button onClick={caricaStorico} className="text-xs font-semibold text-terra">Aggiorna</button>
+          </div>
+          {loadingStorico && (
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 text-sm text-slate-400">
+              Carico fatture...
+            </div>
+          )}
+          {!loadingStorico && storico.length === 0 && (
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 text-sm text-slate-400">
+              Nessuna fattura ancora visibile. Carica la prima qui sopra.
+            </div>
+          )}
+          {!loadingStorico && storico.length > 0 && (
+            <div className="space-y-2">
+              {storico.map(f => {
+                const fornitore = Array.isArray(f.fornitori) ? f.fornitori[0]?.nome : f.fornitori?.nome
+                return (
+                  <div key={f.id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-caffe truncate">{fornitore || 'Fornitore non indicato'}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {f.numero_fattura ? `N. ${f.numero_fattura} · ` : ''}{f.data_fattura}
+                        </p>
+                      </div>
+                      <p className="font-bold text-terra shrink-0">€{Number(f.totale_euro ?? 0).toFixed(2)}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -27,6 +27,7 @@ export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | '
 export default function App() {
   const [session, setSession]       = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [restaurantLoading, setRestaurantLoading] = useState(false)
   const [page, setPage]             = useState<Page>('casa')
   const [onboardingDone, setOnboardingDone] = useState(
     () => localStorage.getItem('mira_onboarding_done') === 'true'
@@ -52,16 +53,23 @@ export default function App() {
   useEffect(() => {
     const skipAuth = import.meta.env.VITE_SKIP_AUTH === 'true'
     if (skipAuth || !session) return
+    setRestaurantLoading(true)
     supabase
       .from('ristoranti')
-      .select('id')
+      .select('id, nome')
       .eq('auth_user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data?.id) {
           setRistoranteId(data.id)
           localStorage.setItem('mira_ristorante_id', data.id)
+          localStorage.setItem('mira_onboarding_done', 'true')
+          setOnboardingDone(true)
+        } else {
+          localStorage.removeItem('mira_onboarding_done')
+          setOnboardingDone(false)
         }
+        setRestaurantLoading(false)
       })
   }, [session])
 
@@ -95,7 +103,7 @@ export default function App() {
 
   const skipAuth = import.meta.env.VITE_SKIP_AUTH === 'true'
 
-  if (!skipAuth && authLoading) {
+  if (!skipAuth && (authLoading || restaurantLoading)) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-terra flex items-center justify-center">

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { ArrowLeft, Plus, X, UtensilsCrossed, Pencil, Trash2, EyeOff, Eye, RefreshCw, BookOpen, Minus, Upload, Loader2 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -371,6 +371,7 @@ interface Props {
 
 export default function Menu({ onBack }: Props) {
   const ristoranteId = useRistorante()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [piatti, setPiatti]             = useState<Piatto[]>([])
   const [loading, setLoading]           = useState(true)
   const [mostraModal, setMostraModal]   = useState(false)
@@ -539,7 +540,12 @@ export default function Menu({ onBack }: Props) {
       )}
 
       {!loading && categoriePresenti.length > 0 && (
-        <label className="w-full bg-white border border-slate-100 rounded-2xl p-3 mb-4 text-left shadow-sm flex items-center gap-3 active:scale-[0.99] transition-transform cursor-pointer">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={scanMenu}
+          className="w-full bg-white border border-slate-100 rounded-2xl p-3 mb-4 text-left shadow-sm flex items-center gap-3 active:scale-[0.99] transition-transform disabled:opacity-70"
+        >
           <div className="w-10 h-10 rounded-xl bg-caffe/10 text-caffe flex items-center justify-center shrink-0">
             {scanMenu ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
           </div>
@@ -547,18 +553,7 @@ export default function Menu({ onBack }: Props) {
             <p className="font-bold text-sm text-caffe">{scanMenu ? 'Lettura in corso...' : 'Aggiorna da foto/PDF'}</p>
             <p className="text-xs text-slate-500 mt-0.5">{scanMenu ? 'Non uscire: sto caricando i prodotti' : 'Leggi menu, vini o listino'}</p>
           </div>
-          <input
-            type="file"
-            accept={ACCEPTED_AI_FILES}
-            className="hidden"
-            disabled={scanMenu}
-            onChange={e => {
-              const f = e.target.files?.[0]
-              if (f) analizzaMenu(f)
-              e.target.value = ''
-            }}
-          />
-        </label>
+        </button>
       )}
 
       {/* Filtri */}
@@ -598,23 +593,16 @@ export default function Menu({ onBack }: Props) {
             Scansiona una foto o un PDF per creare subito piatti, vini e bevande.
           </p>
           <div className="grid grid-cols-1 gap-2 mt-5">
-            <label className={`w-full font-semibold rounded-xl py-3.5 cursor-pointer flex items-center justify-center gap-2 ${
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={scanMenu}
+              className={`w-full font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 ${
               scanMenu ? 'bg-caffe/70 text-white pointer-events-none' : 'bg-caffe text-white'
             }`}>
               {scanMenu && <Loader2 size={16} className="animate-spin" />}
               {scanMenu ? 'Lettura menu in corso...' : 'Scansiona menu/listino'}
-              <input
-                type="file"
-                accept={ACCEPTED_AI_FILES}
-                className="hidden"
-                disabled={scanMenu}
-                onChange={e => {
-                  const f = e.target.files?.[0]
-                  if (f) analizzaMenu(f)
-                  e.target.value = ''
-                }}
-              />
-            </label>
+            </button>
             <button
               onClick={() => { setSelezionato(null); setMostraModal(true) }}
               className="w-full text-sm text-terra font-semibold border border-terra/30 rounded-xl py-3"
@@ -626,6 +614,18 @@ export default function Menu({ onBack }: Props) {
       )}
 
       <div className="space-y-5">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_AI_FILES}
+          className="hidden"
+          disabled={scanMenu}
+          onChange={e => {
+            const f = e.target.files?.[0]
+            if (f) analizzaMenu(f)
+            e.target.value = ''
+          }}
+        />
         {categoriePresenti.map(cat => (
           <div key={cat}>
             <p className="text-xs font-bold text-maro uppercase tracking-widest mb-2 px-1">{cat}</p>

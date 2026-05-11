@@ -3,17 +3,10 @@ import { RefreshCw, Plus, Search, ChevronRight, X, ArrowDown, ArrowUp, Pencil, T
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
-interface ScortaRaw {
+interface Scorta {
   ingrediente_id: string
   quantita_disponibile: number
   data_scadenza_prossima: string | null
-  ingredienti: { nome: string; unita_misura: string }[] | null
-}
-interface StockMin {
-  ingrediente_id: string
-  stock_minimo: number | null
-}
-interface Scorta extends ScortaRaw {
   stock_minimo: number
   ingrediente: { nome: string; unita_misura: string } | null
 }
@@ -683,27 +676,9 @@ export default function Magazzino({ onNavigate }: MagazzinoProps) {
 
   const carica = useCallback(async () => {
     setLoading(true)
-    const [{ data: s }, { data: ir }] = await Promise.all([
-      supabase
-        .from('scorte')
-        .select('ingrediente_id, quantita_disponibile, data_scadenza_prossima, ingredienti(nome, unita_misura)')
-        .eq('ristorante_id', ristoranteId),
-      supabase
-        .from('ingredienti_ristorante')
-        .select('ingrediente_id, stock_minimo')
-        .eq('ristorante_id', ristoranteId)
-        .eq('attivo', true),
-    ])
-
-    const minMap = new Map<string, number>(
-      ((ir as StockMin[]) ?? []).map(r => [r.ingrediente_id, r.stock_minimo ?? 0])
-    )
-
-    const merged: Scorta[] = ((s as ScortaRaw[]) ?? []).map(r => ({
-      ...r,
-      stock_minimo: minMap.get(r.ingrediente_id) ?? 0,
-      ingrediente: Array.isArray(r.ingredienti) ? (r.ingredienti[0] ?? null) : r.ingredienti,
-    }))
+    const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/scorte`)
+    const json = await res.json()
+    const merged: Scorta[] = json.ok ? (json.data ?? []) : []
 
     merged.sort((a, b) => {
       const ord: Record<Stato, number> = { esaurito: 0, scadenza: 1, basso: 2, ok: 3 }
