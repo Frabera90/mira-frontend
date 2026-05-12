@@ -20,14 +20,25 @@ interface ScortaEdit {
   qta_riferimento: number
   qta_attuale: string
 }
+interface AbbinaIngrediente {
+  nome: string
+  quantita: number
+  unita_misura: string
+  prezzo: number | null
+  costo: number | null
+  ha_prezzo: boolean
+}
 interface AbbinaItem {
   piatto_id: string
   piatto_nome: string
   categoria: string | null
   prezzo_vendita: number
-  ingredienti: Array<{ nome: string; quantita: number; unita_misura: string; costo: number }>
-  costo_totale: number
+  ingredienti: AbbinaIngrediente[]
+  ingredienti_con_prezzo: number
+  ingredienti_totali: number
+  costo_calcolato: number
   food_cost_pct: number | null
+  copertura_pct: number
 }
 
 const TIPI_CUCINA = ['Italiana', 'Pesce', 'Carne', 'Pizza', 'Trattoria', 'Bar / Bistro', 'Fusion', 'Altro']
@@ -136,12 +147,13 @@ export default function Onboarding({ onComplete }: Props) {
   const [abbinaLoading, setAbbinaLoading] = useState(false)
   const [abbinaFase, setAbbinaFase] = useState(0)
   const [abbinamenti, setAbbinamenti] = useState<AbbinaItem[]>([])
+  const [piattiTotali, setPiattiTotali] = useState(0)
 
   const ABBINA_FASI = [
-    'Analizzo gli ingredienti in magazzino…',
-    'Abbino ingredienti ai piatti…',
+    'Analizzo il menu…',
+    'Genero le ricette con AI…',
+    'Cerco i prezzi in magazzino…',
     'Calcolo il food cost per porzione…',
-    'Preparo i suggerimenti d\'ordine…',
   ]
 
   // ── Step 1 — Crea ristorante ─────────────────────────────────
@@ -337,6 +349,7 @@ export default function Onboarding({ onComplete }: Props) {
       const json = await res.json()
       if (!json.ok) throw new Error(json.error ?? 'Errore abbinamento')
       setAbbinamenti(json.data.abbinamenti ?? [])
+      setPiattiTotali(json.data.piatti_totali ?? 0)
     } catch (e: any) {
       setErrore(e.message)
     } finally {
@@ -650,33 +663,39 @@ export default function Onboarding({ onComplete }: Props) {
         </div>
       ) : (
         /* Risultati */
-        <div className="w-full space-y-5">
-          <div className="text-center mb-2">
+        <div className="w-full space-y-4">
+          <div className="text-center mb-1">
             <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25">
               <CheckCircle size={28} className="text-white" />
             </div>
             <h2 className="text-xl font-bold text-caffe">
               {abbinamenti.length > 0
-                ? `Food cost calcolato per ${abbinamenti.length} piatt${abbinamenti.length === 1 ? 'o' : 'i'}`
+                ? `${abbinamenti.length} ricett${abbinamenti.length === 1 ? 'a generata' : 'e generate'}`
                 : 'Setup completato!'}
             </h2>
             <p className="text-sm text-maro mt-1.5">
               {abbinamenti.length > 0
-                ? 'Solo i piatti con ingredienti in magazzino. Carica altre fatture per coprire il resto.'
-                : 'Nessun abbinamento trovato con gli ingredienti di questa fattura. Carica fatture più complete o aggiungi le ricette manualmente dall\'app.'}
+                ? (() => {
+                    const conPrezzo = abbinamenti.filter(a => a.ingredienti_con_prezzo > 0).length
+                    const senzaPrezzo = abbinamenti.length - conPrezzo
+                    if (senzaPrezzo === 0) return 'Food cost calcolato su tutti i piatti.'
+                    if (conPrezzo === 0) return 'Nessun prezzo trovato in magazzino — carica fatture per calcolare il food cost.'
+                    return `Food cost su ${conPrezzo} piatt${conPrezzo === 1 ? 'o' : 'i'} · ${senzaPrezzo} senza prezzi in magazzino.`
+                  })()
+                : 'Nessuna ricetta generata. Puoi aggiungerle manualmente dall\'app.'}
             </p>
           </div>
 
           {errore && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-sm text-amber-700">L'abbinamento automatico ha avuto un problema, ma puoi aggiungere le ricette dall'app. {errore}</p>
+              <p className="text-sm text-amber-700">L'abbinamento ha avuto un problema, ma puoi aggiungere le ricette dall'app. {errore}</p>
             </div>
           )}
 
-          {abbinamenti.length < piattiCaricati.length && abbinamenti.length > 0 && (
+          {piattiTotali > abbinamenti.length && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
               <p className="text-xs text-slate-500">
-                <span className="font-semibold text-caffe">{piattiCaricati.length - abbinamenti.length} piatti</span> senza ingredienti in magazzino — carica altre fatture o aggiungi le ricette dal Menu.
+                <span className="font-semibold text-caffe">{piattiTotali - abbinamenti.length} piatt{piattiTotali - abbinamenti.length === 1 ? 'o' : 'i'}</span> non elaborat{piattiTotali - abbinamenti.length === 1 ? 'o' : 'i'} — aggiungi le ricette dal Menu.
               </p>
             </div>
           )}
@@ -684,7 +703,16 @@ export default function Onboarding({ onComplete }: Props) {
           {abbinamenti.length > 0 && (
             <div className="space-y-2 max-h-[45vh] overflow-y-auto">
               {abbinamenti.map(a => {
+                const parziale = a.copertura_pct < 100 && a.copertura_pct > 0
+                const nessunPrezzo = a.ingredienti_con_prezzo === 0
                 const fcOk = a.food_cost_pct !== null && a.food_cost_pct <= 35
+                const fcBadgeClass = a.food_cost_pct === null
+                  ? ''
+                  : parziale
+                    ? 'bg-amber-50 text-amber-700'
+                    : fcOk
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-rose-50 text-rose-600'
                 return (
                   <div key={a.piatto_id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
                     <div className="flex justify-between items-start gap-3 mb-2">
@@ -692,35 +720,46 @@ export default function Onboarding({ onComplete }: Props) {
                         <p className="font-semibold text-caffe truncate">{a.piatto_nome}</p>
                         {a.categoria && <p className="text-xs text-slate-400 mt-0.5">{a.categoria}</p>}
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         {a.food_cost_pct !== null && (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${fcOk ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-600'}`}>
-                            FC {a.food_cost_pct.toFixed(1)}%
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${fcBadgeClass}`}>
+                            FC {a.food_cost_pct.toFixed(1)}%{parziale ? '*' : ''}
                           </span>
+                        )}
+                        {parziale && (
+                          <span className="text-[10px] text-slate-400">{a.ingredienti_con_prezzo}/{a.ingredienti_totali} prezzi</span>
                         )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center mt-1">
-                      <div className="bg-slate-50 rounded-lg p-1.5">
-                        <p className="text-[10px] text-slate-400">Prezzo</p>
-                        <p className="text-xs font-bold text-caffe">€{a.prezzo_vendita.toFixed(2)}</p>
+
+                    {!nessunPrezzo && (
+                      <div className="grid grid-cols-3 gap-2 text-center mt-1 mb-2.5">
+                        <div className="bg-slate-50 rounded-lg p-1.5">
+                          <p className="text-[10px] text-slate-400">Prezzo</p>
+                          <p className="text-xs font-bold text-caffe">€{a.prezzo_vendita.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-lg p-1.5">
+                          <p className="text-[10px] text-slate-400">Costo{parziale ? '*' : ''}</p>
+                          <p className="text-xs font-bold text-caffe">€{a.costo_calcolato.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-lg p-1.5">
+                          <p className="text-[10px] text-slate-400">Margine{parziale ? '*' : ''}</p>
+                          <p className={`text-xs font-bold ${a.prezzo_vendita - a.costo_calcolato >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            €{(a.prezzo_vendita - a.costo_calcolato).toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                      <div className="bg-slate-50 rounded-lg p-1.5">
-                        <p className="text-[10px] text-slate-400">Costo</p>
-                        <p className="text-xs font-bold text-caffe">€{a.costo_totale.toFixed(2)}</p>
-                      </div>
-                      <div className="bg-slate-50 rounded-lg p-1.5">
-                        <p className="text-[10px] text-slate-400">Margine</p>
-                        <p className={`text-xs font-bold ${a.prezzo_vendita - a.costo_totale >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          €{(a.prezzo_vendita - a.costo_totale).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-2.5 space-y-0.5">
+                    )}
+
+                    <div className="space-y-1">
                       {a.ingredienti.map((ing, j) => (
-                        <p key={j} className="text-[11px] text-slate-400">
-                          · {ing.nome} {ing.quantita}{ing.unita_misura}
-                        </p>
+                        <div key={j} className="flex items-center gap-1.5">
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${ing.ha_prezzo ? 'bg-emerald-400' : 'bg-slate-300'}`} />
+                          <p className={`text-[11px] ${ing.ha_prezzo ? 'text-slate-600' : 'text-slate-400'}`}>
+                            {ing.nome} {ing.quantita}{ing.unita_misura}
+                            {ing.ha_prezzo && ing.costo != null ? ` · €${ing.costo.toFixed(2)}` : ''}
+                          </p>
+                        </div>
                       ))}
                     </div>
                   </div>
