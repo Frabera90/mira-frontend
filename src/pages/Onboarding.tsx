@@ -657,19 +657,27 @@ export default function Onboarding({ onComplete }: Props) {
             </div>
             <h2 className="text-xl font-bold text-caffe">
               {abbinamenti.length > 0
-                ? `Ho calcolato il food cost di ${abbinamenti.length} piatti`
+                ? `Food cost calcolato per ${abbinamenti.length} piatt${abbinamenti.length === 1 ? 'o' : 'i'}`
                 : 'Setup completato!'}
             </h2>
             <p className="text-sm text-maro mt-1.5">
               {abbinamenti.length > 0
-                ? 'Ecco cosa ho trovato. Puoi modificare tutto dall\'app.'
-                : 'Puoi aggiungere le ricette dall\'app in qualsiasi momento.'}
+                ? 'Solo i piatti con ingredienti in magazzino. Carica altre fatture per coprire il resto.'
+                : 'Nessun abbinamento trovato con gli ingredienti di questa fattura. Carica fatture più complete o aggiungi le ricette manualmente dall\'app.'}
             </p>
           </div>
 
           {errore && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <p className="text-sm text-amber-700">L'abbinamento automatico ha avuto un problema, ma puoi aggiungere le ricette dall'app. {errore}</p>
+            </div>
+          )}
+
+          {abbinamenti.length < piattiCaricati.length && abbinamenti.length > 0 && (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500">
+                <span className="font-semibold text-caffe">{piattiCaricati.length - abbinamenti.length} piatti</span> senza ingredienti in magazzino — carica altre fatture o aggiungi le ricette dal Menu.
+              </p>
             </div>
           )}
 
