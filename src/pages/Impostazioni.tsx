@@ -292,7 +292,7 @@ export default function Impostazioni({ onBack }: Props) {
 
           <button
             onClick={() => {
-              localStorage.removeItem('mira_onboarding_done')
+              localStorage.setItem('mira_onboarding_done', 'false')
               localStorage.removeItem('mira_chef_name')
               localStorage.removeItem('mira_ristorante_id')
               window.location.reload()
