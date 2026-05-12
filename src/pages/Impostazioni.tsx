@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share } from 'lucide-react'
+import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share, CreditCard } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -21,9 +21,10 @@ function Skeleton({ className }: { className: string }) {
 
 interface Props {
   onBack: () => void
+  onNavigate?: (page: string) => void
 }
 
-export default function Impostazioni({ onBack }: Props) {
+export default function Impostazioni({ onBack, onNavigate }: Props) {
   const ristoranteId = useRistorante()
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -287,6 +288,24 @@ export default function Impostazioni({ onBack }: Props) {
                 />
               </div>
             </div>
+          </section>
+
+          {/* Integrazioni */}
+          <section>
+            <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Integrazioni</p>
+            <button
+              onClick={() => onNavigate?.('collega-cassa')}
+              className="w-full bg-white border border-slate-100 rounded-2xl p-4 shadow-sm flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-terra/10 flex items-center justify-center shrink-0">
+                <CreditCard size={16} className="text-terra" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-caffe">Collega Cassa</p>
+                <p className="text-xs text-slate-400 mt-0.5">Webhook e importazione CSV per qualsiasi POS</p>
+              </div>
+              <ArrowLeft size={16} className="text-slate-300 rotate-180 shrink-0" />
+            </button>
           </section>
 
           {errore && (

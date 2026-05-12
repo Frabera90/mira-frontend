@@ -22,8 +22,9 @@ import { registerSW, subscribePush, isPushSupported } from './hooks/usePush'
 import Assistente from './pages/Assistente'
 import GuideModal from './components/GuideModal'
 import ServizioSerale from './pages/ServizioSerale'
+import CollegaCassa from './pages/CollegaCassa'
 
-export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'menu' | 'vendite-csv' | 'storico-ordini' | 'impostazioni' | 'food-cost' | 'servizio-serale'
+export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'menu' | 'vendite-csv' | 'storico-ordini' | 'impostazioni' | 'food-cost' | 'servizio-serale' | 'collega-cassa'
 
 export default function App() {
   const [session, setSession]       = useState<Session | null>(null)
@@ -197,9 +198,10 @@ export default function App() {
           {page === 'menu'           && <Menu onBack={() => setPage('casa')} />}
           {page === 'vendite-csv'    && <VenditeCsv onBack={() => setPage('casa')} />}
           {page === 'storico-ordini' && <StoricoOrdini onBack={() => setPage('ordini')} />}
-          {page === 'impostazioni'   && <Impostazioni onBack={() => setPage('casa')} />}
+          {page === 'impostazioni'   && <Impostazioni onBack={() => setPage('casa')} onNavigate={navigate} />}
           {page === 'food-cost'      && <FoodCost onBack={() => setPage('casa')} />}
           {page === 'servizio-serale' && <ServizioSerale onBack={() => setPage('casa')} />}
+          {page === 'collega-cassa'  && <CollegaCassa onBack={() => setPage('impostazioni')} />}
           <div className={page === 'notifiche' ? '' : 'hidden'}>
             <Notifiche onNotificheChange={setBadgeNotifiche} />
           </div>
