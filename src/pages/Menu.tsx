@@ -464,7 +464,7 @@ export default function Menu({ onBack }: Props) {
   })
 
   const gruppi = filtrati.reduce<Record<string, Piatto[]>>((acc, p) => {
-    const cat = p.categoria ?? 'Altro'
+    const cat = CATEGORIE.find(c => c.toLowerCase() === (p.categoria ?? '').toLowerCase()) ?? 'Altro'
     if (!acc[cat]) acc[cat] = []
     acc[cat].push(p)
     return acc
@@ -531,8 +531,8 @@ export default function Menu({ onBack }: Props) {
               <p className="text-sm font-semibold">Menu aggiornato</p>
               <p className="text-xs mt-1">
                 {scanEsito.totale > 0
-                  ? `${scanEsito.totale} prodotti caricati. ${scanEsito.ricette} ricette suggerite, ${scanEsito.ingredienti} nuovi ingredienti.`
-                  : 'Ho letto il file, ma non ho trovato nuovi prodotti. Puoi riprovare con una foto piu nitida.'}
+                  ? `${scanEsito.totale} prodotti caricati. Apri ogni piatto con l'icona libro per inserire le grammature e calcolare il food cost.`
+                  : 'Ho letto il file, ma non ho trovato nuovi prodotti. Riprova con una foto più nitida.'}
               </p>
             </div>
           )}

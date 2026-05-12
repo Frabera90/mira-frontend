@@ -30,7 +30,7 @@ export default function BottomNav({ active, onChange, badge = 0 }: Props) {
           >
             <Icon size={22} strokeWidth={isActive ? 2.6 : 2} />
             <span className="leading-tight text-center">{label}</span>
-            {id === 'notifiche' && badge > 0 && (
+            {id === 'casa' && badge > 0 && (
               <span className="absolute top-1.5 right-[14%] bg-rose-500 text-white text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
                 {badge > 9 ? '9+' : badge}
               </span>

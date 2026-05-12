@@ -193,7 +193,7 @@ export default function App() {
           {page === 'vendite-csv'    && <VenditeCsv onBack={() => setPage('casa')} />}
           {page === 'storico-ordini' && <StoricoOrdini onBack={() => setPage('ordini')} />}
           {page === 'impostazioni'   && <Impostazioni onBack={() => setPage('casa')} />}
-          {page === 'food-cost'      && <FoodCost onBack={() => setPage('ordini')} />}
+          {page === 'food-cost'      && <FoodCost onBack={() => setPage('casa')} />}
           <div className={page === 'notifiche' ? '' : 'hidden'}>
             <Notifiche onNotificheChange={setBadgeNotifiche} />
           </div>
