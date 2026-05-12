@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
 interface RistoranteData {
@@ -31,6 +31,14 @@ export default function Impostazioni({ onBack }: Props) {
   const [errore, setErrore]     = useState<string | null>(null)
 
   const [nomeChef, setNomeChef] = useState(() => localStorage.getItem('mira_chef_name') ?? '')
+  const [botLink, setBotLink] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/telegram/bot-username`)
+      .then(r => r.json())
+      .then(j => j.username && setBotLink(`https://t.me/${j.username}?start=${ristoranteId}`))
+      .catch(() => {})
+  }, [])
   const [rist, setRist]         = useState<RistoranteData>({
     nome: '', indirizzo: null, citta: null,
     email_contatto: null, telefono: null,
@@ -231,6 +239,17 @@ export default function Impostazioni({ onBack }: Props) {
                   </p>
                 </div>
               </div>
+              {botLink && (
+                <a
+                  href={botLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 bg-[#229ED9] text-white text-sm font-semibold rounded-xl py-2.5 w-full"
+                >
+                  <Send size={14} />
+                  Collega automaticamente via Telegram
+                </a>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-maro mb-1.5">Telegram Chat ID</label>
                 <input

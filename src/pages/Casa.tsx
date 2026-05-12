@@ -287,7 +287,7 @@ export default function Casa({ onNavigate }: CasaProps) {
             {[
               { Icon: Camera, label: 'Fattura', desc: 'Scorte', page: 'fattura', tone: 'text-terra bg-terra/10' },
               { Icon: UtensilsCrossed, label: 'Menu', desc: 'Listino', page: 'menu', tone: 'text-caffe bg-slate-100' },
-              { Icon: ClipboardCheck, label: 'Fine', desc: 'Servizio', page: 'vendite-csv', tone: 'text-amber-700 bg-amber-50' },
+              { Icon: ChefHat, label: 'Servizio', desc: 'Serale', page: 'servizio-serale', tone: 'text-emerald-700 bg-emerald-50' },
             ].map(({ Icon, label, desc, page, tone }) => (
               <button
                 key={page}
@@ -387,7 +387,7 @@ export default function Casa({ onNavigate }: CasaProps) {
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           {[
             { icon: Truck,           label: 'Fornitori',   page: 'fornitori',    color: 'bg-indigo-50 text-indigo-600' },
-            { icon: ClipboardCheck,  label: 'Fine servizio', page: 'vendite-csv',  color: 'bg-amber-50 text-amber-700' },
+            { icon: ClipboardCheck,  label: 'Sprechi', page: 'vendite-csv',  color: 'bg-amber-50 text-amber-700' },
             { icon: CalendarDays,    label: 'Coperti',      page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
             { icon: ChefHat,         label: 'Food Cost',   page: 'food-cost',    color: 'bg-emerald-50 text-emerald-600' },
           ].map(({ icon: Icon, label, page, color }) => (

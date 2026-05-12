@@ -21,8 +21,9 @@ import BottomNav from './components/BottomNav'
 import { registerSW, subscribePush, isPushSupported } from './hooks/usePush'
 import Assistente from './pages/Assistente'
 import GuideModal from './components/GuideModal'
+import ServizioSerale from './pages/ServizioSerale'
 
-export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'menu' | 'vendite-csv' | 'storico-ordini' | 'impostazioni' | 'food-cost'
+export type Page = 'casa' | 'magazzino' | 'ordini' | 'fattura' | 'notifiche' | 'assistente' | 'prenotazioni' | 'fornitori' | 'menu' | 'vendite-csv' | 'storico-ordini' | 'impostazioni' | 'food-cost' | 'servizio-serale'
 
 export default function App() {
   const [session, setSession]       = useState<Session | null>(null)
@@ -198,6 +199,7 @@ export default function App() {
           {page === 'storico-ordini' && <StoricoOrdini onBack={() => setPage('ordini')} />}
           {page === 'impostazioni'   && <Impostazioni onBack={() => setPage('casa')} />}
           {page === 'food-cost'      && <FoodCost onBack={() => setPage('casa')} />}
+          {page === 'servizio-serale' && <ServizioSerale onBack={() => setPage('casa')} />}
           <div className={page === 'notifiche' ? '' : 'hidden'}>
             <Notifiche onNotificheChange={setBadgeNotifiche} />
           </div>
