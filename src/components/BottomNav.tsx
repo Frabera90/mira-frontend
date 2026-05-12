@@ -1,12 +1,12 @@
-import { Home, Package, ReceiptText, UtensilsCrossed, ClipboardCheck } from 'lucide-react'
+import { Home, Package, ReceiptText, UtensilsCrossed, ShoppingCart } from 'lucide-react'
 import type { Page } from '../App'
 
 const tabs: { id: Page; label: string; Icon: React.ElementType }[] = [
-  { id: 'casa',        label: 'Oggi',          Icon: Home },
-  { id: 'magazzino',   label: 'Scorte',        Icon: Package },
-  { id: 'fattura',     label: 'Fatture',       Icon: ReceiptText },
-  { id: 'menu',        label: 'Menu',          Icon: UtensilsCrossed },
-  { id: 'vendite-csv', label: 'Fine servizio', Icon: ClipboardCheck },
+  { id: 'casa',      label: 'Oggi',    Icon: Home },
+  { id: 'magazzino', label: 'Scorte',  Icon: Package },
+  { id: 'fattura',   label: 'Fatture', Icon: ReceiptText },
+  { id: 'menu',      label: 'Menu',    Icon: UtensilsCrossed },
+  { id: 'ordini',    label: 'Ordini',  Icon: ShoppingCart },
 ]
 
 interface Props {

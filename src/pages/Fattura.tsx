@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload, FileImage, RotateCcw, CheckCircle, Loader2, CalendarDays, Hash, ArrowLeft, ChevronRight } from 'lucide-react'
+import { Upload, FileImage, RotateCcw, CheckCircle, Loader2, CalendarDays, Hash, ArrowLeft, ChevronRight, X } from 'lucide-react'
 import { BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -27,6 +27,16 @@ interface FatturaStorico {
   totale_iva: number | null
   fornitori: { nome: string } | { nome: string }[] | null
 }
+interface FatturaDetail {
+  id: string
+  numero_fattura: string | null
+  data_fattura: string
+  data_scadenza_pagamento: string | null
+  totale_euro: number
+  totale_iva: number | null
+  fornitori: { nome: string } | null
+  fatture_righe: Riga[]
+}
 
 type Fase = 'idle' | 'preview' | 'analisi' | 'risultato' | 'errore'
 
@@ -50,6 +60,9 @@ export default function Fattura({ onBack }: Props) {
   const [ingredientiCaricati, setIngredientiCaricati] = useState<number>(0)
   const [storico, setStorico] = useState<FatturaStorico[]>([])
   const [loadingStorico, setLoadingStorico] = useState(true)
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [detail, setDetail] = useState<FatturaDetail | null>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
   const caricaStorico = useCallback(async () => {
     setLoadingStorico(true)
@@ -63,6 +76,19 @@ export default function Fattura({ onBack }: Props) {
   }, [ristoranteId])
 
   useEffect(() => { caricaStorico() }, [caricaStorico])
+
+  async function apriDettaglio(id: string) {
+    setDetailId(id)
+    setDetail(null)
+    setLoadingDetail(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/fatture/${id}`)
+      const json = await res.json()
+      if (json.ok) setDetail(json.data)
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
 
   function handleFile(file: File) {
     if (!SUPPORTED_AI_MEDIA_TYPES.has(file.type)) {
@@ -199,7 +225,11 @@ export default function Fattura({ onBack }: Props) {
               {storico.map(f => {
                 const fornitore = Array.isArray(f.fornitori) ? f.fornitori[0]?.nome : f.fornitori?.nome
                 return (
-                  <div key={f.id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+                  <button
+                    key={f.id}
+                    onClick={() => apriDettaglio(f.id)}
+                    className="w-full bg-white border border-slate-100 rounded-2xl p-4 shadow-sm text-left active:scale-[0.99] transition-transform"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-semibold text-caffe truncate">{fornitore || 'Fornitore non indicato'}</p>
@@ -207,11 +237,82 @@ export default function Fattura({ onBack }: Props) {
                           {f.numero_fattura ? `N. ${f.numero_fattura} · ` : ''}{f.data_fattura}
                         </p>
                       </div>
-                      <p className="font-bold text-terra shrink-0">€{Number(f.totale_euro ?? 0).toFixed(2)}</p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <p className="font-bold text-terra">€{Number(f.totale_euro ?? 0).toFixed(2)}</p>
+                        <ChevronRight size={14} className="text-slate-300" />
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
+            </div>
+          )}
+
+          {/* Modal dettaglio fattura */}
+          {detailId && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={() => setDetailId(null)}>
+              <div
+                className="bg-white rounded-t-2xl w-full max-w-[480px] mx-auto max-h-[85vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 shrink-0">
+                  <p className="font-semibold text-caffe">
+                    {detail ? (Array.isArray(detail.fornitori) ? detail.fornitori[0]?.nome : detail.fornitori?.nome) ?? 'Fattura' : 'Carico…'}
+                  </p>
+                  <button onClick={() => setDetailId(null)} className="text-slate-400 p-1"><X size={18} /></button>
+                </div>
+
+                {loadingDetail && (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 size={20} className="text-terra animate-spin" />
+                  </div>
+                )}
+
+                {detail && !loadingDetail && (
+                  <div className="overflow-y-auto p-5 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        {detail.numero_fattura && (
+                          <p className="text-xs text-slate-400">N. {detail.numero_fattura}</p>
+                        )}
+                        <p className="text-sm text-slate-500">{detail.data_fattura}</p>
+                        {detail.data_scadenza_pagamento && (
+                          <p className="text-xs text-amber-600 mt-0.5">Scad. {detail.data_scadenza_pagamento}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-terra">€{Number(detail.totale_euro).toFixed(2)}</p>
+                        {detail.totale_iva != null && (
+                          <p className="text-xs text-slate-400">IVA €{Number(detail.totale_iva).toFixed(2)}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {detail.fatture_righe?.length > 0 ? (
+                      <div className="bg-slate-50 rounded-2xl overflow-hidden">
+                        <p className="text-xs font-semibold text-maro px-4 pt-3 pb-2">
+                          {detail.fatture_righe.length} righe
+                        </p>
+                        {detail.fatture_righe.map((r, i) => (
+                          <div key={i} className="flex justify-between items-start px-4 py-2.5 border-t border-slate-100">
+                            <div className="flex-1 min-w-0 mr-3">
+                              <p className="text-sm text-caffe font-medium truncate">{r.descrizione}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                {r.quantita} {r.unita_misura ?? ''} × €{Number(r.prezzo_unitario).toFixed(4)}
+                              </p>
+                            </div>
+                            <p className="text-sm font-semibold text-caffe shrink-0">
+                              €{Number(r.importo_totale).toFixed(2)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-400 text-center py-4">Nessuna riga disponibile</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

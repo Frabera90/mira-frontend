@@ -46,8 +46,9 @@ export default function VenditeCsv({ onBack }: Props) {
   const [tipoEvento, setTipoEvento] = useState<'spreco' | 'eccedenza'>('spreco')
   const [ingredienteEvento, setIngredienteEvento] = useState('')
   const [quantitaEvento, setQuantitaEvento] = useState('')
+  const [unitaEvento, setUnitaEvento] = useState('kg')
   const [motivoEvento, setMotivoEvento] = useState('')
-  const [eventi, setEventi] = useState<Array<{ tipo: string; ingrediente: string; quantita: number }>>([])
+  const [eventi, setEventi] = useState<Array<{ tipo: string; ingrediente: string; quantita: number; unita: string; qtaDopoAggiornamento: number | null }>>([])
 
   async function leggiFile(file: File) {
     const text = await file.text()
@@ -92,12 +93,20 @@ export default function VenditeCsv({ onBack }: Props) {
           tipo: tipoEvento,
           ingrediente: ingredienteEvento,
           quantita: parseFloat(quantitaEvento.replace(',', '.')),
-          motivo: motivoEvento || 'Registrato da fine servizio',
+          motivo: motivoEvento
+            ? `${motivoEvento} (${parseFloat(quantitaEvento.replace(',', '.'))} ${unitaEvento})`
+            : `${tipoEvento === 'spreco' ? 'Spreco' : 'Eccedenza'} da fine servizio: ${parseFloat(quantitaEvento.replace(',', '.'))} ${unitaEvento}`,
         }),
       })
       const json = await res.json()
       if (!json.ok) throw new Error(json.error ?? 'Errore registrazione evento')
-      setEventi(prev => [{ tipo: tipoEvento, ingrediente: ingredienteEvento, quantita: parseFloat(quantitaEvento.replace(',', '.')) }, ...prev])
+      setEventi(prev => [{
+        tipo: tipoEvento,
+        ingrediente: ingredienteEvento,
+        quantita: parseFloat(quantitaEvento.replace(',', '.')),
+        unita: unitaEvento,
+        qtaDopoAggiornamento: json.data?.quantita_disponibile ?? null,
+      }, ...prev])
       setIngredienteEvento('')
       setQuantitaEvento('')
       setMotivoEvento('')
@@ -191,20 +200,29 @@ export default function VenditeCsv({ onBack }: Props) {
           </button>
         </div>
 
-        <div className="grid grid-cols-[1fr_96px] gap-2">
-          <input
-            value={ingredienteEvento}
-            onChange={e => setIngredienteEvento(e.target.value)}
-            placeholder="Prodotto: branzino, prosecco..."
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
-          />
+        <input
+          value={ingredienteEvento}
+          onChange={e => setIngredienteEvento(e.target.value)}
+          placeholder="Prodotto: branzino, prosecco, burro..."
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+        />
+        <div className="grid grid-cols-[1fr_auto] gap-2">
           <input
             value={quantitaEvento}
             onChange={e => setQuantitaEvento(e.target.value)}
             inputMode="decimal"
-            placeholder="Qta"
+            placeholder="Quantità"
             className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
           />
+          <select
+            value={unitaEvento}
+            onChange={e => setUnitaEvento(e.target.value)}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+          >
+            {['kg', 'g', 'lt', 'ml', 'pz', 'bt', 'cf'].map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
         </div>
         <input
           value={motivoEvento}
@@ -222,11 +240,22 @@ export default function VenditeCsv({ onBack }: Props) {
         </button>
 
         {eventi.length > 0 && (
-          <div className="space-y-1">
-            {eventi.slice(0, 3).map((e, i) => (
-              <p key={i} className="text-xs text-slate-500">
-                {e.tipo === 'spreco' ? '-' : '+'}{e.quantita} {e.ingrediente} registrato come {e.tipo}
-              </p>
+          <div className="space-y-2">
+            {eventi.slice(0, 5).map((ev, i) => (
+              <div key={i} className={`rounded-xl px-3 py-2 flex items-start gap-2 ${ev.tipo === 'spreco' ? 'bg-rose-50' : 'bg-emerald-50'}`}>
+                <span className={`font-bold text-sm shrink-0 ${ev.tipo === 'spreco' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {ev.tipo === 'spreco' ? '−' : '+'}
+                </span>
+                <div className="min-w-0">
+                  <p className={`text-sm font-semibold truncate ${ev.tipo === 'spreco' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                    {ev.quantita} {ev.unita} {ev.ingrediente}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {ev.tipo === 'spreco' ? 'Spreco' : 'Eccedenza'} salvato · visibile in Magazzino
+                    {ev.qtaDopoAggiornamento != null && ` · scorta attuale: ${Number(ev.qtaDopoAggiornamento).toFixed(2)} ${ev.unita}`}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         )}

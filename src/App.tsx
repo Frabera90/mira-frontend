@@ -145,7 +145,7 @@ export default function App() {
     setPage(p as Page)
   }
 
-  const navPages: Page[] = ['casa', 'magazzino', 'fattura', 'menu', 'vendite-csv']
+  const navPages: Page[] = ['casa', 'magazzino', 'fattura', 'menu', 'ordini']
 
   return (
     <RistoranteContext.Provider value={ristoranteId}>
