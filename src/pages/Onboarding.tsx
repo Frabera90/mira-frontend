@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ChevronRight, ArrowLeft, Upload, FileImage, CheckCircle,
-  Loader2, RotateCcw, UtensilsCrossed, Package, ChefHat,
+  Loader2, RotateCcw, UtensilsCrossed, Package, ChefHat, Send,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 
@@ -47,7 +47,7 @@ const SUPPORTED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif',
 
 // ── helpers ───────────────────────────────────────────────────
 
-function ProgressDots({ step, total = 5 }: { step: number; total?: number }) {
+function ProgressDots({ step, total = 6 }: { step: number; total?: number }) {
   return (
     <div className="flex items-center justify-center gap-2 mb-8">
       {Array.from({ length: total }, (_, i) => (
@@ -115,7 +115,7 @@ function StepShell({
 // ── componente principale ─────────────────────────────────────
 
 export default function Onboarding({ onComplete }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
   const [saving, setSaving] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
 
@@ -142,6 +142,27 @@ export default function Onboarding({ onComplete }: Props) {
   const [scorte, setScorte] = useState<ScortaEdit[]>([])
   const [loadingScorte, setLoadingScorte] = useState(false)
   const [savingScorte, setSavingScorte] = useState(false)
+
+  // Step 6 — Telegram
+  const [botUsername, setBotUsername] = useState<string | null>(null)
+  const [telegramConnesso, setTelegramConnesso] = useState(false)
+  const [checkingTelegram, setCheckingTelegram] = useState(false)
+
+  useEffect(() => {
+    if (step !== 6) return
+    fetch(`${BACKEND_URL}/api/telegram/bot-username`)
+      .then(r => r.json())
+      .then(j => j.username && setBotUsername(j.username))
+      .catch(() => {})
+  }, [step])
+
+  async function verificaCollegamento() {
+    if (!ristoranteId) return
+    setCheckingTelegram(true)
+    const { data } = await supabase.from('ristoranti').select('telegram_chat_id').eq('id', ristoranteId).maybeSingle()
+    setTelegramConnesso(!!data?.telegram_chat_id)
+    setCheckingTelegram(false)
+  }
 
   // Step 5
   const [abbinaLoading, setAbbinaLoading] = useState(false)
@@ -637,6 +658,7 @@ export default function Onboarding({ onComplete }: Props) {
 
   if (step === 5) return (
     <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-6 max-w-[480px] mx-auto">
+      <ProgressDots step={5} />
       {abbinaLoading ? (
         /* Loading */
         <div className="w-full space-y-8 text-center">
@@ -770,11 +792,10 @@ export default function Onboarding({ onComplete }: Props) {
 
           <div className="pt-2">
             <button
-              onClick={() => ristoranteId && onComplete(ristoranteId)}
+              onClick={() => setStep(6)}
               className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
             >
-              <ChefHat size={16} />
-              Entra in MIRA
+              Avanti <ChevronRight size={16} />
             </button>
             <p className="text-xs text-slate-400 text-center mt-3">
               Potrai modificare ricette e grammature in qualsiasi momento dall'app.
@@ -784,6 +805,96 @@ export default function Onboarding({ onComplete }: Props) {
       )}
     </div>
   )
+
+  if (step === 6) {
+    const telegramUrl = botUsername
+      ? `https://t.me/${botUsername}?start=${ristoranteId}`
+      : null
+
+    return (
+      <div className="min-h-screen bg-cream flex flex-col p-6 max-w-[480px] mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => setStep(5)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 -ml-1 shrink-0">
+            <ArrowLeft size={18} />
+          </button>
+          <div className="w-8 h-8 rounded-xl bg-terra flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-sm">M</span>
+          </div>
+        </div>
+
+        <ProgressDots step={6} total={6} />
+
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold text-caffe leading-tight">Collega Telegram</h2>
+          <p className="text-maro mt-2 mb-6 leading-relaxed text-sm">
+            Ricevi briefing, alert scorte e comandi diretti su Telegram — anche in cucina senza aprire il browser.
+          </p>
+
+          <div className="space-y-3 mb-8">
+            {[
+              { emoji: '☀️', text: 'Briefing mattutino con ordini urgenti e scadenze' },
+              { emoji: '📸', text: 'Manda foto di una fattura → MIRA la legge' },
+              { emoji: '🗣️', text: 'Vocale: "ho sprecato 300g di branzino"' },
+              { emoji: '📋', text: 'Reminder settimanale per fatture mancanti' },
+            ].map((f, i) => (
+              <div key={i} className="flex items-start gap-3 bg-white rounded-xl px-4 py-3 border border-slate-100">
+                <span className="text-lg shrink-0">{f.emoji}</span>
+                <p className="text-sm text-caffe">{f.text}</p>
+              </div>
+            ))}
+          </div>
+
+          {telegramConnesso ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
+              <CheckCircle size={18} className="text-emerald-600 shrink-0" />
+              <p className="text-sm font-semibold text-emerald-800">Telegram collegato!</p>
+            </div>
+          ) : telegramUrl ? (
+            <a
+              href={telegramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-[#229ED9] text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 mb-3"
+            >
+              <Send size={16} />
+              Apri MIRA su Telegram
+            </a>
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-3">
+              <p className="text-sm text-slate-600 font-medium mb-1">Collega manualmente</p>
+              <p className="text-xs text-slate-500">Apri Telegram, cerca il bot MIRA e invia <code className="bg-slate-100 px-1 rounded">/start {ristoranteId}</code></p>
+            </div>
+          )}
+
+          {!telegramConnesso && (
+            <button
+              onClick={verificaCollegamento}
+              disabled={checkingTelegram}
+              className="w-full border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 flex items-center justify-center gap-2 mb-2"
+            >
+              {checkingTelegram ? <Loader2 size={14} className="animate-spin" /> : null}
+              {checkingTelegram ? 'Verifico…' : 'Verifica collegamento'}
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <button
+            onClick={() => ristoranteId && onComplete(ristoranteId)}
+            className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
+          >
+            <ChefHat size={16} />
+            Entra in MIRA
+          </button>
+          {!telegramConnesso && (
+            <p className="text-xs text-slate-400 text-center">
+              Puoi collegare Telegram in qualsiasi momento da Impostazioni.
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return null
 }
