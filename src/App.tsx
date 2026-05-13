@@ -65,12 +65,8 @@ export default function App() {
         if (data?.id) {
           setRistoranteId(data.id)
           localStorage.setItem('mira_ristorante_id', data.id)
-          // Segna onboarding completato solo se non era già stato resettato
-          // (es. l'utente ha cliccato "Ripeti onboarding")
-          if (localStorage.getItem('mira_onboarding_done') !== 'false') {
-            localStorage.setItem('mira_onboarding_done', 'true')
-            setOnboardingDone(true)
-          }
+          localStorage.setItem('mira_onboarding_done', 'true')
+          setOnboardingDone(true)
         } else {
           localStorage.removeItem('mira_onboarding_done')
           setOnboardingDone(false)

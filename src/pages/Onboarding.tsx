@@ -124,7 +124,9 @@ export default function Onboarding({ onComplete }: Props) {
   const [nomeRist, setNomeRist] = useState('')
   const [tipoCucina, setTipoCucina] = useState('')
   const [coperti, setCoperti] = useState('')
-  const [ristoranteId, setRistoranteId] = useState<string | null>(null)
+  const [ristoranteId, setRistoranteId] = useState<string | null>(
+    () => localStorage.getItem('mira_ristorante_id')
+  )
 
   // Step 2
   const fatturaInputRef = useRef<HTMLInputElement>(null)
@@ -440,8 +442,8 @@ export default function Onboarding({ onComplete }: Props) {
       step={2}
       title="Carica una fattura recente"
       subtitle="MIRA legge ingredienti, prezzi e quantità consegnate — tutto automatico."
-      cta={fattureCaricate.length > 0 ? 'Avanti' : 'Carica fattura per continuare'}
-      ctaDisabled={fattureCaricate.length === 0}
+      cta={fattureCaricate.length > 0 ? 'Avanti' : 'Salta per ora'}
+      ctaDisabled={false}
       onBack={() => setStep(1)}
       onNext={() => setStep(3)}
     >
@@ -524,8 +526,8 @@ export default function Onboarding({ onComplete }: Props) {
       step={3}
       title="Carica il tuo menu"
       subtitle="Foto, PDF, listino — MIRA crea piatti e bevande con prezzi e categorie."
-      cta={piattiCaricati.length > 0 ? 'Avanti' : 'Carica menu per continuare'}
-      ctaDisabled={piattiCaricati.length === 0}
+      cta={piattiCaricati.length > 0 ? 'Avanti' : 'Salta per ora'}
+      ctaDisabled={false}
       onBack={() => setStep(2)}
       onNext={() => setStep(4)}
     >
