@@ -40,6 +40,8 @@ interface AbbinaItem {
   food_cost_pct: number | null
   copertura_pct: number
 }
+interface PiattoNonAbbinato { id: string; nome: string; categoria: string | null }
+interface FornitoreRiassunto { nome: string; totale: number }
 
 const TIPI_CUCINA = ['Italiana', 'Pesce', 'Carne', 'Pizza', 'Trattoria', 'Bar / Bistro', 'Fusion', 'Altro']
 const ACCEPTED = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
@@ -171,6 +173,9 @@ export default function Onboarding({ onComplete }: Props) {
   const [abbinaFase, setAbbinaFase] = useState(0)
   const [abbinamenti, setAbbinamenti] = useState<AbbinaItem[]>([])
   const [piattiTotali, setPiattiTotali] = useState(0)
+  const [piattiNonAbbinati, setPiattiNonAbbinati] = useState<PiattoNonAbbinato[]>([])
+  const [fornitori, setFornitori] = useState<FornitoreRiassunto[]>([])
+  const [totaleSpesa, setTotaleSpesa] = useState(0)
 
   const ABBINA_FASI = [
     'Analizzo il menu…',
@@ -331,8 +336,8 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   useEffect(() => {
-    if (step === 4) caricaScorte()
-  }, [step])
+    if (step === 4 && ristoranteId) caricaScorte()
+  }, [step, ristoranteId])
 
   async function salvaScorteEAvanza() {
     if (!ristoranteId) return
@@ -356,8 +361,8 @@ export default function Onboarding({ onComplete }: Props) {
     setStep(5)
     setAbbinaLoading(true)
     setAbbinaFase(0)
+    setErrore(null)
 
-    // Anima le fasi mentre aspettiamo
     const intervals: ReturnType<typeof setInterval>[] = []
     ABBINA_FASI.forEach((_, i) => {
       const t = setTimeout(() => setAbbinaFase(i), i * 1800)
@@ -371,8 +376,12 @@ export default function Onboarding({ onComplete }: Props) {
       })
       const json = await res.json()
       if (!json.ok) throw new Error(json.error ?? 'Errore abbinamento')
-      setAbbinamenti(json.data.abbinamenti ?? [])
-      setPiattiTotali(json.data.piatti_totali ?? 0)
+      const d = json.data
+      setAbbinamenti(d.abbinamenti ?? [])
+      setPiattiTotali(d.piatti_totali ?? 0)
+      setPiattiNonAbbinati(d.piatti_non_abbinati ?? [])
+      setFornitori(d.fornitori ?? [])
+      setTotaleSpesa(d.totale_fatture ?? 0)
     } catch (e: any) {
       setErrore(e.message)
     } finally {
@@ -658,155 +667,197 @@ export default function Onboarding({ onComplete }: Props) {
     </StepShell>
   )
 
-  if (step === 5) return (
-    <div className="min-h-screen bg-cream flex flex-col items-center justify-center p-6 max-w-[480px] mx-auto">
-      <ProgressDots step={5} />
-      {abbinaLoading ? (
-        /* Loading */
-        <div className="w-full space-y-8 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-terra flex items-center justify-center mx-auto shadow-xl shadow-terra/25">
-            <span className="text-white font-bold text-3xl">M</span>
+  if (step === 5) {
+    const avgFc = abbinamenti.length > 0
+      ? abbinamenti.filter(a => a.food_cost_pct !== null).reduce((s, a) => s + (a.food_cost_pct ?? 0), 0) /
+        Math.max(1, abbinamenti.filter(a => a.food_cost_pct !== null).length)
+      : null
+    const maxSpesa = Math.max(...fornitori.map(f => f.totale), 1)
+
+    return (
+      <div className="min-h-screen bg-cream flex flex-col p-5 max-w-[480px] mx-auto">
+        <ProgressDots step={5} />
+
+        {abbinaLoading ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-8 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-terra flex items-center justify-center mx-auto shadow-xl shadow-terra/25">
+              <span className="text-white font-bold text-3xl">M</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-caffe">MIRA sta elaborando…</h2>
+              <p className="text-sm text-maro mt-2">Calcolo ricette, food cost e fornitori</p>
+            </div>
+            <div className="w-full space-y-3 text-left">
+              {ABBINA_FASI.map((fase, i) => (
+                <div key={i} className={`flex items-center gap-3 transition-all ${i <= abbinaFase ? 'opacity-100' : 'opacity-25'}`}>
+                  {i < abbinaFase
+                    ? <CheckCircle size={16} className="text-emerald-500 shrink-0" />
+                    : i === abbinaFase
+                    ? <Loader2 size={16} className="text-terra animate-spin shrink-0" />
+                    : <div className="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0" />}
+                  <p className={`text-sm ${i === abbinaFase ? 'font-semibold text-caffe' : 'text-slate-400'}`}>{fase}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-caffe">MIRA sta lavorando…</h2>
-            <p className="text-sm text-maro mt-2">Ci vuole qualche secondo</p>
-          </div>
-          <div className="space-y-3 text-left">
-            {ABBINA_FASI.map((fase, i) => (
-              <div key={i} className={`flex items-center gap-3 transition-all ${i <= abbinaFase ? 'opacity-100' : 'opacity-25'}`}>
-                {i < abbinaFase
-                  ? <CheckCircle size={16} className="text-emerald-500 shrink-0" />
-                  : i === abbinaFase
-                  ? <Loader2 size={16} className="text-terra animate-spin shrink-0" />
-                  : <div className="w-4 h-4 rounded-full border-2 border-slate-200 shrink-0" />
-                }
-                <p className={`text-sm ${i === abbinaFase ? 'font-semibold text-caffe' : 'text-slate-400'}`}>{fase}</p>
+        ) : (
+          <div className="flex-1 overflow-y-auto space-y-5 pb-4">
+
+            {/* Hero */}
+            <div className="text-center pt-2 pb-1">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25">
+                <CheckCircle size={30} className="text-white" />
               </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        /* Risultati */
-        <div className="w-full space-y-4">
-          <div className="text-center mb-1">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25">
-              <CheckCircle size={28} className="text-white" />
+              <h2 className="text-2xl font-bold text-caffe">MIRA ha capito il tuo ristorante</h2>
+              <p className="text-sm text-maro mt-1.5">Ecco cosa ho trovato nelle tue fatture e nel tuo menu</p>
             </div>
-            <h2 className="text-xl font-bold text-caffe">
-              {abbinamenti.length > 0
-                ? `${abbinamenti.length} ricett${abbinamenti.length === 1 ? 'a generata' : 'e generate'}`
-                : 'Setup completato!'}
-            </h2>
-            <p className="text-sm text-maro mt-1.5">
-              {abbinamenti.length > 0
-                ? (() => {
-                    const conPrezzo = abbinamenti.filter(a => a.ingredienti_con_prezzo > 0).length
-                    const senzaPrezzo = abbinamenti.length - conPrezzo
-                    if (senzaPrezzo === 0) return 'Food cost calcolato su tutti i piatti.'
-                    if (conPrezzo === 0) return 'Nessun prezzo trovato in magazzino — carica fatture per calcolare il food cost.'
-                    return `Food cost su ${conPrezzo} piatt${conPrezzo === 1 ? 'o' : 'i'} · ${senzaPrezzo} senza prezzi in magazzino.`
-                  })()
-                : 'Nessuna ricetta generata. Puoi aggiungerle manualmente dall\'app.'}
-            </p>
-          </div>
 
-          {errore && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-sm text-amber-700">L'abbinamento ha avuto un problema, ma puoi aggiungere le ricette dall'app. {errore}</p>
+            {/* Error (only real errors) */}
+            {errore && (
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-rose-700 mb-1">Problema durante l'elaborazione</p>
+                <p className="text-xs text-rose-600">{errore}</p>
+                <p className="text-xs text-rose-500 mt-1">Puoi aggiungere le ricette manualmente dal Food Cost.</p>
+              </div>
+            )}
+
+            {/* Stats summary */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Piatti elaborati', value: `${abbinamenti.length} / ${piattiTotali}`, icon: '🍽️' },
+                { label: 'Food cost medio', value: avgFc !== null ? `${avgFc.toFixed(1)}%` : 'N/D', icon: '📊' },
+                { label: 'Spesa rilevata', value: totaleSpesa > 0 ? `€${totaleSpesa.toLocaleString('it-IT', { maximumFractionDigits: 0 })}` : 'N/D', icon: '💰' },
+                { label: 'Fornitori attivi', value: `${fornitori.length}`, icon: '🏪' },
+              ].map((s, i) => (
+                <div key={i} className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
+                  <p className="text-lg mb-1">{s.icon}</p>
+                  <p className="text-xl font-bold text-caffe">{s.value}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
+                </div>
+              ))}
             </div>
-          )}
 
-          {piattiTotali > abbinamenti.length && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-              <p className="text-xs text-slate-500">
-                <span className="font-semibold text-caffe">{piattiTotali - abbinamenti.length} piatt{piattiTotali - abbinamenti.length === 1 ? 'o' : 'i'}</span> non elaborat{piattiTotali - abbinamenti.length === 1 ? 'o' : 'i'} — aggiungi le ricette dal Menu.
+            {/* Fornitori breakdown */}
+            {fornitori.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Da chi compri</p>
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  {fornitori.map((f, i) => (
+                    <div key={i} className={`px-4 py-3 ${i < fornitori.length - 1 ? 'border-b border-slate-50' : ''}`}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <p className="text-sm font-semibold text-caffe truncate flex-1">{f.nome}</p>
+                        <p className="text-sm font-bold text-terra ml-2 shrink-0">€{f.totale.toFixed(0)}</p>
+                      </div>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-terra/60 rounded-full"
+                          style={{ width: `${(f.totale / maxSpesa) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Food cost per piatto */}
+            {abbinamenti.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Food cost per piatto</p>
+                <div className="space-y-2">
+                  {abbinamenti
+                    .sort((a, b) => (b.food_cost_pct ?? -1) - (a.food_cost_pct ?? -1))
+                    .map(a => {
+                      const fc = a.food_cost_pct
+                      const fcClass = fc === null ? 'bg-slate-100 text-slate-500'
+                        : fc > 35 ? 'bg-rose-100 text-rose-700'
+                        : fc > 28 ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                      return (
+                        <div key={a.piatto_id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                          <div className="flex justify-between items-start gap-2 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-caffe text-sm truncate">{a.piatto_nome}</p>
+                              {a.categoria && <p className="text-[11px] text-slate-400">{a.categoria}</p>}
+                            </div>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${fcClass}`}>
+                              {fc !== null ? `${fc.toFixed(1)}%` : 'N/D'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5 text-center">
+                            <div className="bg-slate-50 rounded-lg p-1.5">
+                              <p className="text-[10px] text-slate-400">Vendita</p>
+                              <p className="text-xs font-bold text-caffe">€{a.prezzo_vendita.toFixed(2)}</p>
+                            </div>
+                            <div className="bg-slate-50 rounded-lg p-1.5">
+                              <p className="text-[10px] text-slate-400">Costo</p>
+                              <p className="text-xs font-bold text-caffe">
+                                {a.ingredienti_con_prezzo > 0 ? `€${a.costo_calcolato.toFixed(2)}` : '—'}
+                              </p>
+                            </div>
+                            <div className="bg-slate-50 rounded-lg p-1.5">
+                              <p className="text-[10px] text-slate-400">Margine</p>
+                              <p className={`text-xs font-bold ${(a.prezzo_vendita - a.costo_calcolato) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {a.ingredienti_con_prezzo > 0 ? `€${(a.prezzo_vendita - a.costo_calcolato).toFixed(2)}` : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          {a.copertura_pct < 100 && a.ingredienti_con_prezzo > 0 && (
+                            <p className="text-[10px] text-amber-600 mt-1.5">
+                              ⚠ {a.ingredienti_con_prezzo}/{a.ingredienti_totali} ingredienti con prezzo — food cost parziale
+                            </p>
+                          )}
+                          {a.ingredienti_con_prezzo === 0 && (
+                            <p className="text-[10px] text-slate-400 mt-1.5">
+                              Nessun prezzo trovato — carica una fattura per questo piatto
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Piatti senza ricetta */}
+            {piattiNonAbbinati.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">
+                  Piatti da completare ({piattiNonAbbinati.length})
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+                  <p className="text-xs text-amber-700 mb-2">
+                    MIRA non ha trovato una ricetta standard per questi piatti. Puoi aggiungere gli ingredienti manualmente dal Food Cost.
+                  </p>
+                  {piattiNonAbbinati.map(p => (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                      <p className="text-sm text-amber-800 font-medium">{p.nome}</p>
+                      {p.categoria && <p className="text-xs text-amber-600">({p.categoria})</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="pt-2 space-y-3">
+              <button
+                onClick={() => setStep(6)}
+                className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
+              >
+                Avanti — Collega Telegram <ChevronRight size={16} />
+              </button>
+              <p className="text-xs text-slate-400 text-center">
+                Puoi modificare ricette, grammature e prezzi in qualsiasi momento dal Food Cost.
               </p>
             </div>
-          )}
 
-          {abbinamenti.length > 0 && (
-            <div className="space-y-2 max-h-[45vh] overflow-y-auto">
-              {abbinamenti.map(a => {
-                const parziale = a.copertura_pct < 100 && a.copertura_pct > 0
-                const nessunPrezzo = a.ingredienti_con_prezzo === 0
-                const fcOk = a.food_cost_pct !== null && a.food_cost_pct <= 35
-                const fcBadgeClass = a.food_cost_pct === null
-                  ? ''
-                  : parziale
-                    ? 'bg-amber-50 text-amber-700'
-                    : fcOk
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-rose-50 text-rose-600'
-                return (
-                  <div key={a.piatto_id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
-                    <div className="flex justify-between items-start gap-3 mb-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-caffe truncate">{a.piatto_nome}</p>
-                        {a.categoria && <p className="text-xs text-slate-400 mt-0.5">{a.categoria}</p>}
-                      </div>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        {a.food_cost_pct !== null && (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${fcBadgeClass}`}>
-                            FC {a.food_cost_pct.toFixed(1)}%{parziale ? '*' : ''}
-                          </span>
-                        )}
-                        {parziale && (
-                          <span className="text-[10px] text-slate-400">{a.ingredienti_con_prezzo}/{a.ingredienti_totali} prezzi</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {!nessunPrezzo && (
-                      <div className="grid grid-cols-3 gap-2 text-center mt-1 mb-2.5">
-                        <div className="bg-slate-50 rounded-lg p-1.5">
-                          <p className="text-[10px] text-slate-400">Prezzo</p>
-                          <p className="text-xs font-bold text-caffe">€{a.prezzo_vendita.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg p-1.5">
-                          <p className="text-[10px] text-slate-400">Costo{parziale ? '*' : ''}</p>
-                          <p className="text-xs font-bold text-caffe">€{a.costo_calcolato.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg p-1.5">
-                          <p className="text-[10px] text-slate-400">Margine{parziale ? '*' : ''}</p>
-                          <p className={`text-xs font-bold ${a.prezzo_vendita - a.costo_calcolato >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            €{(a.prezzo_vendita - a.costo_calcolato).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      {a.ingredienti.map((ing, j) => (
-                        <div key={j} className="flex items-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${ing.ha_prezzo ? 'bg-emerald-400' : 'bg-slate-300'}`} />
-                          <p className={`text-[11px] ${ing.ha_prezzo ? 'text-slate-600' : 'text-slate-400'}`}>
-                            {ing.nome} {ing.quantita}{ing.unita_misura}
-                            {ing.ha_prezzo && ing.costo != null ? ` · €${ing.costo.toFixed(2)}` : ''}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          <div className="pt-2">
-            <button
-              onClick={() => setStep(6)}
-              className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
-            >
-              Avanti <ChevronRight size={16} />
-            </button>
-            <p className="text-xs text-slate-400 text-center mt-3">
-              Potrai modificare ricette e grammature in qualsiasi momento dall'app.
-            </p>
           </div>
-        </div>
-      )}
-    </div>
-  )
+        )}
+      </div>
+    )
+  }
 
   if (step === 6) {
     const telegramUrl = botUsername

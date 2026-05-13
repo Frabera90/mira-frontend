@@ -283,26 +283,31 @@ function DettaglioSheet({
   useEffect(() => {
     if (search.length < 2) { setOpzioni([]); return }
     setSearchLoading(true)
-    const t = setTimeout(() => {
-      supabase
-        .from('ingredienti_ristorante')
-        .select('ingrediente_id, prezzo_acquisto_corrente, ingredienti(nome, unita_misura)')
-        .eq('ristorante_id', ristoranteId)
-        .eq('attivo', true)
-        .then(({ data }) => {
-          const all: IngredienteOpzione[] = ((data as any[]) ?? []).map(r => {
-            const ing = Array.isArray(r.ingredienti) ? r.ingredienti[0] : r.ingredienti
-            return {
-              id:     r.ingrediente_id,
-              nome:   ing?.nome ?? '',
-              um:     ing?.unita_misura ?? '',
-              prezzo: r.prezzo_acquisto_corrente,
-            }
-          })
-          const lc = search.toLowerCase()
-          setOpzioni(all.filter(o => o.nome.toLowerCase().includes(lc)).slice(0, 6))
-          setSearchLoading(false)
-        })
+    const t = setTimeout(async () => {
+      const { data: globalData } = await supabase
+        .from('ingredienti')
+        .select('id, nome, unita_misura')
+        .ilike('nome', `%${search}%`)
+        .limit(20)
+      const ids = (globalData ?? []).map(r => r.id)
+      const prezziMap = new Map<string, number | null>()
+      if (ids.length) {
+        const { data: prezzi } = await supabase
+          .from('ingredienti_ristorante')
+          .select('ingrediente_id, prezzo_acquisto_corrente')
+          .eq('ristorante_id', ristoranteId)
+          .in('ingrediente_id', ids)
+        ;(prezzi ?? []).forEach((p: any) => prezziMap.set(p.ingrediente_id, p.prezzo_acquisto_corrente))
+      }
+      setOpzioni(
+        (globalData ?? []).slice(0, 6).map((r: any) => ({
+          id:     r.id,
+          nome:   r.nome,
+          um:     r.unita_misura,
+          prezzo: prezziMap.get(r.id) ?? null,
+        }))
+      )
+      setSearchLoading(false)
     }, 250)
     return () => clearTimeout(t)
   }, [search])
