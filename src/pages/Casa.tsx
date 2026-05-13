@@ -2,8 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   RefreshCw, AlertTriangle, Clock, Users, TrendingUp,
   Package, CalendarDays, Settings, ChefHat, ChevronRight,
-  Camera, ShoppingCart, UtensilsCrossed, Truck,
-  ClipboardCheck,
+  Camera, UtensilsCrossed, Truck, ClipboardCheck,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -281,27 +280,23 @@ export default function Casa({ onNavigate }: CasaProps) {
       )}
 
       {onNavigate && (
-        <div className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm">
-          <p className="text-xs font-bold text-maro uppercase tracking-wide mb-2">Azioni rapide</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { Icon: Camera, label: 'Fattura', desc: 'Scorte', page: 'fattura', tone: 'text-terra bg-terra/10' },
-              { Icon: UtensilsCrossed, label: 'Menu', desc: 'Listino', page: 'menu', tone: 'text-caffe bg-slate-100' },
-              { Icon: ChefHat, label: 'Servizio', desc: 'Serale', page: 'servizio-serale', tone: 'text-emerald-700 bg-emerald-50' },
-            ].map(({ Icon, label, desc, page, tone }) => (
-              <button
-                key={page}
-                onClick={() => onNavigate(page)}
-                className="rounded-xl border border-slate-100 bg-slate-50/60 p-2.5 text-center active:scale-95 transition-transform"
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1 ${tone}`}>
-                  <Icon size={17} />
-                </div>
-                <p className="text-xs font-bold text-caffe">{label}</p>
-                <p className="text-[10px] text-slate-400">{desc}</p>
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { Icon: Camera,          label: 'Fattura',   page: 'fattura',         tone: 'text-terra bg-terra/10' },
+            { Icon: UtensilsCrossed, label: 'Menu',      page: 'menu',            tone: 'text-caffe bg-slate-100' },
+            { Icon: Users,           label: 'Servizio',  page: 'servizio-serale', tone: 'text-emerald-700 bg-emerald-50' },
+          ].map(({ Icon, label, page, tone }) => (
+            <button
+              key={page}
+              onClick={() => onNavigate(page)}
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tone}`}>
+                <Icon size={19} />
+              </div>
+              <span className="text-[11px] font-semibold text-caffe">{label}</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -327,59 +322,6 @@ export default function Casa({ onNavigate }: CasaProps) {
           </div>
           <ChevronRight size={16} className="text-amber-500 shrink-0 mt-2" />
         </button>
-      )}
-
-      {/* Empty state — guida per nuovi utenti */}
-      {briefing && !loading &&
-        briefing.ordini_urgenti.length === 0 &&
-        briefing.prodotti_scadenza.length === 0 &&
-        briefing.prenotazioni.length === 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-          <div>
-            <p className="font-semibold text-caffe">Benvenuto! Inizia da qui 👇</p>
-            <p className="text-xs text-slate-400 mt-1">Il magazzino è vuoto. Segui questi 3 passi per popolare MIRA.</p>
-          </div>
-          <div className="space-y-3">
-            {[
-              {
-                n: '1', Icon: Camera, color: 'bg-terra/10 text-terra',
-                titolo: 'Scansiona una fattura',
-                desc: 'Tocca Fatture: l\'AI legge fornitori, ingredienti, quantita e prezzi automaticamente.',
-                cta: 'Scansiona fattura', page: 'fattura',
-              },
-              {
-                n: '2', Icon: UtensilsCrossed, color: 'bg-indigo-100 text-indigo-600',
-                titolo: 'Scansiona il menu',
-                desc: 'Tocca Menu e carica una foto/PDF: MIRA crea piatti, vini e bevande per calcolare margini e food cost.',
-                cta: 'Scansiona menu', page: 'menu',
-              },
-              {
-                n: '3', Icon: ShoppingCart, color: 'bg-amber-100 text-amber-700',
-                titolo: 'Controlla gli ordini',
-                desc: 'Quando scorte e menu sono caricati, MIRA suggerisce cosa ordinare ai fornitori.',
-                cta: 'Vai agli Ordini', page: 'ordini',
-              },
-            ].map(({ n, Icon, color, titolo, desc, cta, page }) => (
-              <div key={n} className="flex gap-3 items-start">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
-                  <Icon size={16} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-caffe">{titolo}</p>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
-                  {onNavigate && (
-                    <button
-                      onClick={() => onNavigate(page)}
-                      className="text-xs text-terra font-semibold mt-1.5 flex items-center gap-0.5"
-                    >
-                      {cta} <ChevronRight size={12} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Accesso rapido */}
