@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   ArrowLeft, RefreshCw, Plus, X, ChefHat, TrendingDown,
-  AlertTriangle, Search, Trash2, Check,
+  AlertTriangle, Search, Trash2, Check, Sparkles, Loader2,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
 interface Piatto {
@@ -54,13 +54,36 @@ interface Props {
 
 export default function FoodCost({ onBack }: Props) {
   const ristoranteId = useRistorante()
-  const [piatti, setPiatti]       = useState<Piatto[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [tick, setTick]           = useState(0)
-  const [dettaglio, setDettaglio] = useState<Piatto | null>(null)
-  const [mostraAdd, setMostraAdd] = useState(false)
+  const [piatti, setPiatti]           = useState<Piatto[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [tick, setTick]               = useState(0)
+  const [dettaglio, setDettaglio]     = useState<Piatto | null>(null)
+  const [mostraAdd, setMostraAdd]     = useState(false)
+  const [ricalcola, setRicalcola]     = useState(false)
+  const [ricalcolaMsg, setRicalcolaMsg] = useState<string | null>(null)
 
   const carica = useCallback(() => setTick(t => t + 1), [])
+
+  async function ricalcolaFoodCost() {
+    setRicalcola(true)
+    setRicalcolaMsg(null)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/onboarding/abbina`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const json = await res.json()
+      if (!json.ok) throw new Error(json.error ?? 'Errore')
+      const d = json.data
+      const abbinati = d.abbinamenti?.length ?? 0
+      const nonAbb = d.piatti_non_abbinati?.length ?? 0
+      setRicalcolaMsg(`✓ ${abbinati} ricette aggiornate${nonAbb > 0 ? ` · ${nonAbb} piatti senza ricetta standard` : ''}`)
+      carica()
+    } catch (e: any) {
+      setRicalcolaMsg(`Errore: ${e.message}`)
+    }
+    setRicalcola(false)
+  }
 
   useEffect(() => {
     setLoading(true)
@@ -121,6 +144,34 @@ export default function FoodCost({ onBack }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Ricalcola banner — shown when all dishes have zero cost */}
+      {!loading && piatti.length > 0 && piatti.every(p => Number(p.costo_ingredienti) === 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <Sparkles size={18} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Food cost non calcolato</p>
+              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                Le ricette non sono collegate ai prezzi delle fatture. Clicca per ricalcolare con AI.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={ricalcolaFoodCost}
+            disabled={ricalcola}
+            className="w-full bg-amber-600 text-white font-semibold rounded-xl py-2.5 flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+          >
+            {ricalcola ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+            {ricalcola ? 'Ricalcolo in corso (30-60 sec)…' : 'Ricalcola ricette con AI'}
+          </button>
+          {ricalcolaMsg && (
+            <p className={`text-xs font-medium ${ricalcolaMsg.startsWith('Errore') ? 'text-rose-600' : 'text-emerald-700'}`}>
+              {ricalcolaMsg}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Alert banner */}
       {!loading && inAlert > 0 && (
