@@ -136,6 +136,14 @@ export default function FoodCost({ onBack }: Props) {
             <Plus size={18} />
           </button>
           <button
+            onClick={ricalcolaFoodCost}
+            disabled={ricalcola}
+            className="p-2 rounded-xl text-maro hover:bg-slate-100 active:scale-90 transition-all disabled:opacity-40"
+            title="Ricalcola ricette con AI"
+          >
+            {ricalcola ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+          </button>
+          <button
             onClick={carica}
             className="p-2 rounded-xl text-maro hover:bg-slate-100 active:scale-90 transition-all"
             title="Aggiorna"
