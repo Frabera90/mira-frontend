@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share, CreditCard } from 'lucide-react'
+import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share, CreditCard, Trash2, AlertTriangle, X } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -19,6 +19,111 @@ function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />
 }
 
+interface DeleteConfig {
+  title: string
+  descrizione: string
+  cascata: string[]
+  ctaLabel: string
+  onConfirm: () => Promise<void>
+}
+
+function ConfirmDeleteSheet({ cfg, onClose }: { cfg: DeleteConfig; onClose: () => void }) {
+  const [step, setStep] = useState<'warn' | 'confirm'>('warn')
+  const [loading, setLoading] = useState(false)
+  const [errore, setErrore] = useState<string | null>(null)
+
+  async function esegui() {
+    setLoading(true)
+    setErrore(null)
+    try {
+      await cfg.onConfirm()
+      onClose()
+    } catch (e: any) {
+      setErrore(e.message ?? 'Errore durante la cancellazione')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl max-h-[90vh] flex flex-col">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
+              <AlertTriangle size={15} className="text-rose-600" />
+            </div>
+            <h2 className="font-bold text-caffe text-base">{cfg.title}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4">
+          <p className="text-sm text-slate-600 leading-relaxed">{cfg.descrizione}</p>
+
+          <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 space-y-2">
+            <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide">Effetti a cascata</p>
+            {cfg.cascata.map((c, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-rose-400 mt-0.5 shrink-0">•</span>
+                <p className="text-xs text-rose-700 leading-relaxed">{c}</p>
+              </div>
+            ))}
+          </div>
+
+          {step === 'confirm' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-amber-800">Sei davvero sicuro?</p>
+              <p className="text-xs text-amber-700 mt-1">Questa azione è irreversibile. Tutti i dati elencati verranno eliminati definitivamente.</p>
+            </div>
+          )}
+
+          {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
+        </div>
+
+        <div className="shrink-0 px-6 pb-8 pt-4 space-y-3">
+          {step === 'warn' ? (
+            <>
+              <button
+                onClick={() => setStep('confirm')}
+                className="w-full bg-rose-500 text-white font-semibold rounded-xl py-3.5"
+              >
+                Continua — ho capito le conseguenze
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full border border-slate-200 text-slate-500 font-medium rounded-xl py-3 text-sm"
+              >
+                Annulla
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={esegui}
+                disabled={loading}
+                className="w-full bg-rose-600 text-white font-bold rounded-xl py-3.5 disabled:opacity-50"
+              >
+                {loading ? 'Eliminazione…' : cfg.ctaLabel}
+              </button>
+              <button
+                onClick={() => setStep('warn')}
+                disabled={loading}
+                className="w-full border border-slate-200 text-slate-500 font-medium rounded-xl py-3 text-sm disabled:opacity-50"
+              >
+                Torna indietro
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   onBack: () => void
   onNavigate?: (page: string) => void
@@ -33,6 +138,7 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
 
   const [nomeChef, setNomeChef] = useState(() => localStorage.getItem('mira_chef_name') ?? '')
   const [botLink, setBotLink] = useState<string | null>(null)
+  const [deleteCfg, setDeleteCfg] = useState<DeleteConfig | null>(null)
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/telegram/bot-username`)
@@ -328,6 +434,85 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
             )}
           </button>
 
+          {/* Dati */}
+          <section>
+            <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Gestione dati</p>
+            <div className="space-y-2">
+              {[
+                {
+                  label: 'Cancella tutto il menu',
+                  sub: 'Piatti, ricette e food cost',
+                  cfg: {
+                    title: 'Cancella il menu',
+                    descrizione: 'Verranno eliminati tutti i piatti, le bevande e le ricette che hai caricato.',
+                    cascata: [
+                      'Il food cost tornerà a zero per tutti i piatti',
+                      'Le ricette e gli abbinamenti verranno persi',
+                      'Dovrai ricaricare il menu e rieseguire l\'abbinamento',
+                    ],
+                    ctaLabel: 'Sì, cancella tutto il menu',
+                    onConfirm: async () => {
+                      const { error } = await supabase.from('piatti').delete().eq('ristorante_id', ristoranteId)
+                      if (error) throw new Error(error.message)
+                    },
+                  } as DeleteConfig,
+                },
+                {
+                  label: 'Cancella tutte le fatture',
+                  sub: 'Fatture, prezzi ingredienti e scorte',
+                  cfg: {
+                    title: 'Cancella le fatture',
+                    descrizione: 'Verranno eliminate tutte le fatture caricate con i relativi dati di spesa.',
+                    cascata: [
+                      'I prezzi di tutti gli ingredienti verranno azzerati',
+                      'Le scorte in magazzino verranno azzerate',
+                      'Il food cost non sarà più calcolabile senza nuove fatture',
+                      'La spesa per fornitore andrà a zero',
+                    ],
+                    ctaLabel: 'Sì, cancella tutte le fatture',
+                    onConfirm: async () => {
+                      const { error: ef } = await supabase.from('fatture').delete().eq('ristorante_id', ristoranteId)
+                      if (ef) throw new Error(ef.message)
+                      await supabase.from('scorte').delete().eq('ristorante_id', ristoranteId)
+                      await supabase.from('ingredienti_ristorante').update({ prezzo_acquisto_corrente: null }).eq('ristorante_id', ristoranteId)
+                    },
+                  } as DeleteConfig,
+                },
+                {
+                  label: 'Cancella tutti i fornitori',
+                  sub: 'Anagrafica fornitori',
+                  cfg: {
+                    title: 'Cancella i fornitori',
+                    descrizione: 'Verranno eliminati tutti i fornitori e le relative assegnazioni agli ingredienti.',
+                    cascata: [
+                      'Le fatture associate ai fornitori rimarranno ma senza collegamento al fornitore',
+                      'Dovrai riassegnare gli ingredienti ai nuovi fornitori',
+                    ],
+                    ctaLabel: 'Sì, cancella tutti i fornitori',
+                    onConfirm: async () => {
+                      const { error } = await supabase.from('fornitori').delete().eq('ristorante_id', ristoranteId)
+                      if (error) throw new Error(error.message)
+                    },
+                  } as DeleteConfig,
+                },
+              ].map(({ label, sub, cfg }) => (
+                <button
+                  key={label}
+                  onClick={() => setDeleteCfg(cfg)}
+                  className="w-full bg-white border border-rose-100 rounded-2xl p-4 shadow-sm flex items-center gap-3 text-left hover:bg-rose-50 transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                    <Trash2 size={15} className="text-rose-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-rose-700">{label}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
           <button
             onClick={() => {
               localStorage.setItem('mira_onboarding_done', 'false')
@@ -350,6 +535,8 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
           </button>
         </div>
       )}
+
+      {deleteCfg && <ConfirmDeleteSheet cfg={deleteCfg} onClose={() => setDeleteCfg(null)} />}
     </div>
   )
 }

@@ -678,11 +678,12 @@ function AddPiattoModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl">
-        <div className="flex justify-between items-center">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl flex flex-col max-h-[90vh]">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
           <h2 className="font-bold text-caffe text-lg">Nuovo piatto</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={18} /></button>
         </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
         <div>
           <label className="block text-xs font-semibold text-maro mb-1.5">Nome *</label>
@@ -736,14 +737,17 @@ function AddPiattoModal({ onClose, onSaved }: { onClose: () => void; onSaved: ()
         </div>
 
         {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
+        </div>
 
-        <button
-          onClick={salva}
-          disabled={saving || !nome.trim()}
-          className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
-        >
-          {saving ? 'Salvataggio…' : '+ Aggiungi piatto'}
-        </button>
+        <div className="shrink-0 px-6 pb-8 pt-4">
+          <button
+            onClick={salva}
+            disabled={saving || !nome.trim()}
+            className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
+          >
+            {saving ? 'Salvataggio…' : '+ Aggiungi piatto'}
+          </button>
+        </div>
       </div>
     </div>
   )

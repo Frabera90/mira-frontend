@@ -449,96 +449,12 @@ export default function Onboarding({ onComplete }: Props) {
   if (step === 2) return (
     <StepShell
       step={2}
-      title="Carica una fattura recente"
-      subtitle="MIRA legge ingredienti, prezzi e quantità consegnate — tutto automatico."
-      cta={fattureCaricate.length > 0 ? 'Avanti' : 'Salta per ora'}
-      ctaDisabled={false}
-      onBack={() => setStep(1)}
-      onNext={() => setStep(3)}
-    >
-      <div className="space-y-4">
-        {/* Upload o analisi */}
-        {!fatturaPreview && !uploadingFattura && (
-          <button
-            onClick={() => fatturaInputRef.current?.click()}
-            className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center gap-3 hover:border-terra hover:bg-slate-50 transition-all"
-          >
-            <div className="w-12 h-12 bg-terra/10 rounded-xl flex items-center justify-center">
-              <Upload size={24} className="text-terra" />
-            </div>
-            <div className="text-center">
-              <p className="font-semibold text-caffe">Tocca per scegliere</p>
-              <p className="text-xs text-slate-400 mt-1">Foto, PDF, fotocamera</p>
-            </div>
-          </button>
-        )}
-
-        {fatturaPreview && !uploadingFattura && (
-          <div className="space-y-3">
-            <div className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50">
-              {fatturaPreview.type === 'application/pdf'
-                ? <div className="p-6 text-center text-sm text-slate-500">PDF selezionato</div>
-                : <img src={fatturaPreview.url} alt="" className="w-full max-h-48 object-contain" />
-              }
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => { setFatturaPreview(null); setFatturaFile(null) }}
-                className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-medium text-slate-600 flex items-center justify-center gap-2">
-                <RotateCcw size={14} /> Cambia
-              </button>
-              <button onClick={analizzaFattura}
-                className="flex-1 bg-terra text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
-                <FileImage size={14} /> Leggi fattura
-              </button>
-            </div>
-          </div>
-        )}
-
-        {uploadingFattura && (
-          <div className="flex items-center gap-3 bg-indigo-50 rounded-2xl p-4">
-            <Loader2 size={18} className="text-terra animate-spin shrink-0" />
-            <div>
-              <p className="font-semibold text-caffe text-sm">AI in lettura…</p>
-              <p className="text-xs text-slate-500 mt-0.5">Estraggo ingredienti e prezzi</p>
-            </div>
-          </div>
-        )}
-
-        {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
-
-        {/* Fatture già caricate */}
-        {fattureCaricate.length > 0 && (
-          <div className="space-y-2">
-            {fattureCaricate.map((f, i) => (
-              <div key={i} className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                <CheckCircle size={16} className="text-emerald-600 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-emerald-800">{f.fornitore}</p>
-                  <p className="text-xs text-emerald-600">{f.ingredienti} ingredienti caricati</p>
-                </div>
-              </div>
-            ))}
-            <button onClick={() => fatturaInputRef.current?.click()}
-              className="w-full border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 flex items-center justify-center gap-2">
-              <Upload size={14} /> Carica un'altra fattura
-            </button>
-          </div>
-        )}
-
-        <input ref={fatturaInputRef} type="file" accept={ACCEPTED} className="hidden" onChange={scegliFileFattura} />
-      </div>
-    </StepShell>
-  )
-
-  if (step === 3) return (
-    <StepShell
-      step={3}
       title="Carica il tuo menu"
       subtitle="Foto, PDF, listino — MIRA crea piatti e bevande con prezzi e categorie."
       cta={piattiCaricati.length > 0 ? 'Avanti' : 'Salta per ora'}
       ctaDisabled={false}
-      onBack={() => setStep(2)}
-      onNext={() => setStep(4)}
+      onBack={() => setStep(1)}
+      onNext={() => setStep(3)}
     >
       <div className="space-y-4">
         {!uploadingMenu && piattiCaricati.length === 0 && (
@@ -599,6 +515,101 @@ export default function Onboarding({ onComplete }: Props) {
 
         <input ref={menuInputRef} type="file" accept={ACCEPTED} className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) analizzaMenu(f); e.target.value = '' }} />
+      </div>
+    </StepShell>
+  )
+
+  if (step === 3) return (
+    <StepShell
+      step={3}
+      title="Carica una fattura recente"
+      subtitle="MIRA legge ingredienti, prezzi e quantità consegnate — tutto automatico."
+      cta={fattureCaricate.length > 0 ? 'Avanti' : 'Salta per ora'}
+      ctaDisabled={false}
+      onBack={() => setStep(2)}
+      onNext={() => setStep(4)}
+    >
+      <div className="space-y-4">
+        {/* Avviso menu saltato */}
+        {piattiCaricati.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex gap-3 items-start">
+            <span className="text-lg shrink-0">⚠️</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Menu non ancora caricato</p>
+              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                Senza il menu MIRA non può calcolare il food cost né suggerire gli ordini. Potrai caricarlo in qualsiasi momento dalla sezione Menu.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!fatturaPreview && !uploadingFattura && (
+          <button
+            onClick={() => fatturaInputRef.current?.click()}
+            className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center gap-3 hover:border-terra hover:bg-slate-50 transition-all"
+          >
+            <div className="w-12 h-12 bg-terra/10 rounded-xl flex items-center justify-center">
+              <Upload size={24} className="text-terra" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-caffe">Tocca per scegliere</p>
+              <p className="text-xs text-slate-400 mt-1">Foto, PDF, fotocamera</p>
+            </div>
+          </button>
+        )}
+
+        {fatturaPreview && !uploadingFattura && (
+          <div className="space-y-3">
+            <div className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50">
+              {fatturaPreview.type === 'application/pdf'
+                ? <div className="p-6 text-center text-sm text-slate-500">PDF selezionato</div>
+                : <img src={fatturaPreview.url} alt="" className="w-full max-h-48 object-contain" />
+              }
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => { setFatturaPreview(null); setFatturaFile(null) }}
+                className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-medium text-slate-600 flex items-center justify-center gap-2">
+                <RotateCcw size={14} /> Cambia
+              </button>
+              <button onClick={analizzaFattura}
+                className="flex-1 bg-terra text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2">
+                <FileImage size={14} /> Leggi fattura
+              </button>
+            </div>
+          </div>
+        )}
+
+        {uploadingFattura && (
+          <div className="flex items-center gap-3 bg-indigo-50 rounded-2xl p-4">
+            <Loader2 size={18} className="text-terra animate-spin shrink-0" />
+            <div>
+              <p className="font-semibold text-caffe text-sm">AI in lettura…</p>
+              <p className="text-xs text-slate-500 mt-0.5">Estraggo ingredienti e prezzi</p>
+            </div>
+          </div>
+        )}
+
+        {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
+
+        {fattureCaricate.length > 0 && (
+          <div className="space-y-2">
+            {fattureCaricate.map((f, i) => (
+              <div key={i} className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-800">{f.fornitore}</p>
+                  <p className="text-xs text-emerald-600">{f.ingredienti} ingredienti caricati</p>
+                </div>
+              </div>
+            ))}
+            <button onClick={() => fatturaInputRef.current?.click()}
+              className="w-full border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 flex items-center justify-center gap-2">
+              <Upload size={14} /> Carica un'altra fattura
+            </button>
+          </div>
+        )}
+
+        <input ref={fatturaInputRef} type="file" accept={ACCEPTED} className="hidden" onChange={scegliFileFattura} />
       </div>
     </StepShell>
   )

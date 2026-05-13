@@ -110,12 +110,12 @@ function AggiungiIngredienteModal({ onClose, onSaved }: AggiungiProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-
-        <div className="flex justify-between items-center">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl max-h-[90vh] flex flex-col">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
           <h2 className="font-bold text-caffe text-lg">Aggiungi ingrediente</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={18} /></button>
         </div>
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4">
 
         {/* Nome */}
         <div>
@@ -221,14 +221,17 @@ function AggiungiIngredienteModal({ onClose, onSaved }: AggiungiProps) {
         )}
 
         {errore && <p className="text-sm text-red-600 bg-red-50 rounded-xl p-3">{errore}</p>}
+        </div>
 
-        <button
-          onClick={salva}
-          disabled={saving || !nome.trim() || quantita === ''}
-          className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
-        >
-          {saving ? 'Salvataggio…' : '+ Aggiungi al magazzino'}
-        </button>
+        <div className="shrink-0 px-6 pb-8 pt-4">
+          <button
+            onClick={salva}
+            disabled={saving || !nome.trim() || quantita === ''}
+            className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
+          >
+            {saving ? 'Salvataggio…' : '+ Aggiungi al magazzino'}
+          </button>
+        </div>
       </div>
     </div>
   )

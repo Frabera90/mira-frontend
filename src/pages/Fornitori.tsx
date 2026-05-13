@@ -61,96 +61,100 @@ function AddFornitoreModal({ onClose, onSaved }: { onClose: () => void; onSaved:
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl max-h-[90vh] flex flex-col">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
           <h2 className="font-bold text-caffe text-lg">Nuovo fornitore</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
             <X size={18} />
           </button>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Nome azienda *</label>
-          <input
-            type="text"
-            value={nome}
-            onChange={e => setNome(e.target.value)}
-            placeholder="es. Pescheria Anzio srl"
-            autoFocus
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Referente</label>
-          <input
-            type="text"
-            value={contatto}
-            onChange={e => setContatto(e.target.value)}
-            placeholder="es. Marco Rossi"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-maro mb-1.5">Telefono</label>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Nome azienda *</label>
             <input
-              type="tel"
-              inputMode="tel"
-              value={telefono}
-              onChange={e => setTelefono(e.target.value)}
-              placeholder="320 000 0000"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+              type="text"
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              placeholder="es. Pescheria Anzio srl"
+              autoFocus
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-semibold text-maro mb-1.5">Giorni consegna</label>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Referente</label>
             <input
-              type="number"
-              inputMode="numeric"
-              min="1"
-              max="14"
-              value={giorniConsegna}
-              onChange={e => setGiorni(e.target.value)}
-              placeholder="es. 2"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+              type="text"
+              value={contatto}
+              onChange={e => setContatto(e.target.value)}
+              placeholder="es. Marco Rossi"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
             />
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-maro mb-1.5">Telefono</label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={telefono}
+                onChange={e => setTelefono(e.target.value)}
+                placeholder="320 000 0000"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-maro mb-1.5">Giorni consegna</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                max="14"
+                value={giorniConsegna}
+                onChange={e => setGiorni(e.target.value)}
+                placeholder="es. 2"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Email</label>
+            <input
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="ordini@fornitore.it"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Note</label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="orari, condizioni di pagamento…"
+              rows={2}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra resize-none"
+            />
+          </div>
+
+          {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Email</label>
-          <input
-            type="email"
-            inputMode="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="ordini@fornitore.it"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
-          />
+        <div className="shrink-0 px-6 pb-8 pt-4">
+          <button
+            onClick={salva}
+            disabled={saving || !nome.trim()}
+            className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
+          >
+            {saving ? 'Salvataggio…' : 'Aggiungi fornitore'}
+          </button>
         </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Note</label>
-          <textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="orari, condizioni di pagamento…"
-            rows={2}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra resize-none"
-          />
-        </div>
-
-        {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
-
-        <button
-          onClick={salva}
-          disabled={saving || !nome.trim()}
-          className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
-        >
-          {saving ? 'Salvataggio…' : 'Aggiungi fornitore'}
-        </button>
       </div>
     </div>
   )
@@ -203,58 +207,62 @@ function EditFornitoreModal({ fornitore, onClose, onSaved, onDeleted }: {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl max-h-[90vh] flex flex-col">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
           <h2 className="font-bold text-caffe text-lg">Modifica fornitore</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X size={18} /></button>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Nome azienda *</label>
-          <input type="text" value={nome} onChange={e => setNome(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Referente</label>
-          <input type="text" value={contatto} onChange={e => setContatto(e.target.value)}
-            placeholder="es. Marco Rossi"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-maro mb-1.5">Telefono</label>
-            <input type="tel" inputMode="tel" value={telefono} onChange={e => setTelefono(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra" />
+            <label className="block text-xs font-semibold text-maro mb-1.5">Nome azienda *</label>
+            <input type="text" value={nome} onChange={e => setNome(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-maro mb-1.5">Giorni consegna</label>
-            <input type="number" inputMode="numeric" min="1" max="14" value={giorni} onChange={e => setGiorni(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra" />
+            <label className="block text-xs font-semibold text-maro mb-1.5">Referente</label>
+            <input type="text" value={contatto} onChange={e => setContatto(e.target.value)}
+              placeholder="es. Marco Rossi"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra" />
           </div>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Email</label>
-          <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-maro mb-1.5">Note</label>
-          <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra resize-none" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-maro mb-1.5">Telefono</label>
+              <input type="tel" inputMode="tel" value={telefono} onChange={e => setTelefono(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-maro mb-1.5">Giorni consegna</label>
+              <input type="number" inputMode="numeric" min="1" max="14" value={giorni} onChange={e => setGiorni(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Email</label>
+            <input type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-maro mb-1.5">Note</label>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra resize-none" />
+          </div>
+
+          {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
         </div>
 
-        {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
+        <div className="shrink-0 px-6 pb-8 pt-4 space-y-3">
+          <button onClick={salva} disabled={saving || !nome.trim()}
+            className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity">
+            {saving ? 'Salvataggio…' : 'Salva modifiche'}
+          </button>
 
-        <button onClick={salva} disabled={saving || !nome.trim()}
-          className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity">
-          {saving ? 'Salvataggio…' : 'Salva modifiche'}
-        </button>
-
-        <button onClick={elimina} disabled={eliminando}
-          className="w-full flex items-center justify-center gap-2 border border-rose-200 text-rose-500 font-semibold rounded-xl py-3 text-sm disabled:opacity-50">
-          <Trash2 size={15} />
-          {eliminando ? 'Rimozione…' : 'Rimuovi fornitore'}
-        </button>
+          <button onClick={elimina} disabled={eliminando}
+            className="w-full flex items-center justify-center gap-2 border border-rose-200 text-rose-500 font-semibold rounded-xl py-3 text-sm disabled:opacity-50">
+            <Trash2 size={15} />
+            {eliminando ? 'Rimozione…' : 'Rimuovi fornitore'}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -104,8 +104,8 @@ function RicettaModal({ piatto, onClose }: { piatto: Piatto; onClose: () => void
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[88vh] overflow-y-auto">
-        <div className="flex justify-between items-center">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl max-h-[88vh] flex flex-col">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
           <div>
             <h2 className="font-bold text-caffe text-lg">Ricetta</h2>
             <p className="text-xs text-maro">{piatto.nome}</p>
@@ -114,6 +114,7 @@ function RicettaModal({ piatto, onClose }: { piatto: Piatto; onClose: () => void
             <X size={18} />
           </button>
         </div>
+        <div className="flex-1 overflow-y-auto px-6 pb-8 space-y-4">
 
         {loading ? (
           <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
@@ -202,6 +203,7 @@ function RicettaModal({ piatto, onClose }: { piatto: Piatto; onClose: () => void
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   )
@@ -260,13 +262,14 @@ function PiattoModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl p-6 pb-8 space-y-4 shadow-xl max-h-[92vh] overflow-y-auto">
-        <div className="flex justify-between items-center">
+      <div className="relative bg-white w-full max-w-[480px] rounded-t-3xl shadow-xl max-h-[92vh] flex flex-col">
+        <div className="shrink-0 flex justify-between items-center px-6 pt-5 pb-4">
           <h2 className="font-bold text-caffe text-lg">{isNew ? 'Nuovo prodotto' : 'Modifica prodotto'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
             <X size={18} />
           </button>
         </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
         <div>
           <label className="block text-xs font-semibold text-maro mb-1.5">Nome piatto o bevanda *</label>
@@ -340,24 +343,27 @@ function PiattoModal({
         </label>
 
         {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
+        </div>
 
-        <button
-          onClick={salva}
-          disabled={saving || !nome.trim()}
-          className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
-        >
-          {saving ? 'Salvataggio…' : isNew ? 'Aggiungi al menu' : 'Salva modifiche'}
-        </button>
-
-        {!isNew && (
+        <div className="shrink-0 px-6 pb-8 pt-4 space-y-3">
           <button
-            onClick={elimina}
-            className="w-full flex items-center justify-center gap-2 border border-rose-200 text-rose-500 font-semibold rounded-xl py-3 text-sm"
+            onClick={salva}
+            disabled={saving || !nome.trim()}
+            className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
           >
-            <Trash2 size={15} />
-            Rimuovi dal menu
+            {saving ? 'Salvataggio…' : isNew ? 'Aggiungi al menu' : 'Salva modifiche'}
           </button>
-        )}
+
+          {!isNew && (
+            <button
+              onClick={elimina}
+              className="w-full flex items-center justify-center gap-2 border border-rose-200 text-rose-500 font-semibold rounded-xl py-3 text-sm"
+            >
+              <Trash2 size={15} />
+              Rimuovi dal menu
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
