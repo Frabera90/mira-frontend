@@ -732,6 +732,19 @@ export default function Onboarding({ onComplete }: Props) {
               </div>
             )}
 
+            {/* No menu warning */}
+            {piattiTotali === 0 && !errore && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex gap-3 items-start">
+                <span className="text-lg shrink-0">⚠️</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Nessun menu caricato</p>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    Senza il menu non posso calcolare il food cost. Caricalo dalla sezione Menu in qualsiasi momento.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Stats summary */}
             <div className="grid grid-cols-2 gap-3">
               {[

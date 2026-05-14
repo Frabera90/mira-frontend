@@ -577,72 +577,76 @@ function DettaglioSheet({
         )}
 
         {vista === 'modifica' && (
-          <div className="flex-1 overflow-y-auto px-6 pb-8 space-y-4 pt-1">
-            <div>
-              <label className="block text-xs font-semibold text-maro mb-1.5">Nome piatto</label>
-              <input
-                type="text"
-                value={nome}
-                onChange={e => setNome(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-maro mb-1.5">Categoria</label>
-              <input
-                type="text"
-                value={cat}
-                onChange={e => setCat(e.target.value)}
-                placeholder="es. Antipasto, Primo, Secondo"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <>
+            <div className="flex-1 overflow-y-auto px-6 pb-2 space-y-4 pt-1">
               <div>
-                <label className="block text-xs font-semibold text-maro mb-1.5">Prezzo vendita (€)</label>
+                <label className="block text-xs font-semibold text-maro mb-1.5">Nome piatto</label>
                 <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.5"
-                  value={prezzo}
-                  onChange={e => setPrezzo(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+                  type="text"
+                  value={nome}
+                  onChange={e => setNome(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-maro mb-1.5">Soglia food cost (%)</label>
+                <label className="block text-xs font-semibold text-maro mb-1.5">Categoria</label>
                 <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={soglia}
-                  onChange={e => setSoglia(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+                  type="text"
+                  value={cat}
+                  onChange={e => setCat(e.target.value)}
+                  placeholder="es. Antipasto, Primo, Secondo"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-terra"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-maro mb-1.5">Prezzo vendita (€)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.5"
+                    value={prezzo}
+                    onChange={e => setPrezzo(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-maro mb-1.5">Soglia food cost (%)</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={soglia}
+                    onChange={e => setSoglia(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-terra"
+                  />
+                </div>
+              </div>
+
+              {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
             </div>
 
-            {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
+            <div className="shrink-0 px-6 pb-8 pt-4 space-y-3">
+              <button
+                onClick={salvaPiatto}
+                disabled={saving || !nome.trim()}
+                className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
+              >
+                {saving ? 'Salvataggio…' : 'Salva modifiche'}
+              </button>
 
-            <button
-              onClick={salvaPiatto}
-              disabled={saving || !nome.trim()}
-              className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 disabled:opacity-50 transition-opacity"
-            >
-              {saving ? 'Salvataggio…' : 'Salva modifiche'}
-            </button>
-
-            <button
-              onClick={eliminaPiatto}
-              className="w-full flex items-center justify-center gap-2 border border-rose-200 text-rose-500 font-semibold rounded-xl py-3 text-sm"
-            >
-              <Trash2 size={15} />
-              Elimina piatto
-            </button>
-          </div>
+              <button
+                onClick={eliminaPiatto}
+                className="w-full flex items-center justify-center gap-2 border border-rose-200 text-rose-500 font-semibold rounded-xl py-3 text-sm"
+              >
+                <Trash2 size={15} />
+                Elimina piatto
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
