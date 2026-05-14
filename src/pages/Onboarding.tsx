@@ -117,6 +117,7 @@ function StepShell({
 // ── componente principale ─────────────────────────────────────
 
 export default function Onboarding({ onComplete }: Props) {
+  const [introSeen, setIntroSeen] = useState(false)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
   const [saving, setSaving] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
@@ -392,11 +393,67 @@ export default function Onboarding({ onComplete }: Props) {
 
   // ── Render ───────────────────────────────────────────────────
 
+  if (!introSeen) return (
+    <div className="min-h-screen bg-cream flex flex-col p-6 max-w-[480px] mx-auto">
+      <div className="w-10 h-10 rounded-2xl bg-terra flex items-center justify-center mb-10">
+        <span className="text-white font-bold text-lg">M</span>
+      </div>
+
+      <div className="flex-1">
+        <p className="text-xs font-semibold text-terra uppercase tracking-wide mb-3">Configurazione guidata</p>
+        <h1 className="text-3xl font-bold text-caffe leading-tight">
+          In pochi minuti MIRA capisce il tuo locale.
+        </h1>
+        <p className="text-sm text-maro mt-4 leading-relaxed">
+          Ti accompagno un passo alla volta. Prima leggiamo il menu o il listino, poi le fatture: cosi posso collegare cio che vendi con cio che compri e capire quali prodotti mancano.
+        </p>
+
+        <div className="space-y-3 mt-8">
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 flex gap-3">
+            <div className="w-9 h-9 rounded-xl bg-caffe/10 text-caffe flex items-center justify-center shrink-0">
+              <UtensilsCrossed size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-caffe">Menu o listino</p>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Foto o PDF di piatti, vini, cocktail e prezzi.</p>
+            </div>
+          </div>
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 flex gap-3">
+            <div className="w-9 h-9 rounded-xl bg-terra/10 text-terra flex items-center justify-center shrink-0">
+              <FileImage size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-caffe">Fatture fornitori</p>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Servono per leggere prezzi, quantita, fornitori e scorte.</p>
+            </div>
+          </div>
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 flex gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+              <Send size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-caffe">Telegram</p>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Riceverai briefing, domande sui coperti, alert e report di fine servizio.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setIntroSeen(true)}
+        className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 mt-6 shadow-lg shadow-terra/20"
+      >
+        Inizia
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  )
+
   if (step === 1) return (
     <StepShell
       step={1}
-      title="Benvenuto in MIRA"
-      subtitle="Imposteremo tutto in 5 minuti. Partiamo dal tuo ristorante."
+      title="Dati base del ristorante"
+      subtitle="Mi servono solo nome del locale, tipo di cucina e coperti medi per tarare i primi calcoli."
       cta="Avanti"
       ctaDisabled={!nomeChef.trim() || !nomeRist.trim()}
       onNext={completaStep1}
