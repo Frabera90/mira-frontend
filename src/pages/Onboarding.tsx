@@ -4,6 +4,7 @@ import {
   Loader2, RotateCcw, UtensilsCrossed, Package, ChefHat, Send,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
+import { encodeOperativita, parseOperativita } from '../lib/operativita'
 
 interface Props {
   onComplete: (ristoranteId?: string) => void
@@ -127,6 +128,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [nomeRist, setNomeRist] = useState('')
   const [tipoCucina, setTipoCucina] = useState('')
   const [coperti, setCoperti] = useState('')
+  const [operativita, setOperativita] = useState(() => parseOperativita([1, 2, 3, 4, 5, 6, 7, 102]))
   const [ristoranteId, setRistoranteId] = useState<string | null>(
     () => localStorage.getItem('mira_ristorante_id')
   )
@@ -200,6 +202,7 @@ export default function Onboarding({ onComplete }: Props) {
         const extra: Record<string, unknown> = {}
         if (tipoCucina) extra.tipo_cucina = tipoCucina
         if (coperti) extra.coperti_medi = parseInt(coperti, 10) || null
+        extra.giorni_apertura = encodeOperativita(operativita)
 
         const { data: esistente } = await supabase
           .from('ristoranti').select('id').eq('auth_user_id', user.id).maybeSingle()
@@ -217,6 +220,7 @@ export default function Onboarding({ onComplete }: Props) {
               auth_user_id: user.id,
               ora_briefing: '07:30',
               ora_report_serale: '22:00',
+              giorni_apertura: encodeOperativita(operativita),
               ...extra,
             })
             .select('id').single()
@@ -497,6 +501,50 @@ export default function Onboarding({ onComplete }: Props) {
             placeholder="es. 60"
             className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-terra"
           />
+        </div>
+        <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-caffe">Quando siete aperti?</p>
+            <p className="text-xs text-slate-400 mt-1">Mi serve per scriverti al momento giusto su Telegram.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setOperativita(prev => ({ ...prev, pranzo: !prev.pranzo }))}
+              className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+                operativita.pranzo ? 'bg-terra text-white border-terra' : 'bg-slate-50 text-slate-500 border-slate-100'
+              }`}
+            >
+              Pranzo
+            </button>
+            <button
+              type="button"
+              onClick={() => setOperativita(prev => ({ ...prev, cena: !prev.cena }))}
+              className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+                operativita.cena ? 'bg-terra text-white border-terra' : 'bg-slate-50 text-slate-500 border-slate-100'
+              }`}
+            >
+              Cena
+            </button>
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {[[1, 'L'], [2, 'M'], [3, 'M'], [4, 'G'], [5, 'V'], [6, 'S'], [7, 'D']].map(([day, label]) => {
+              const active = operativita.giorni.includes(Number(day))
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => setOperativita(prev => ({
+                    ...prev,
+                    giorni: active ? prev.giorni.filter(g => g !== Number(day)) : [...prev.giorni, Number(day)].sort(),
+                  }))}
+                  className={`h-9 rounded-xl text-xs font-bold border ${active ? 'bg-caffe text-white border-caffe' : 'bg-slate-50 text-slate-400 border-slate-100'}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
         </div>
         {errore && <p className="text-sm text-rose-600 bg-rose-50 rounded-xl p-3">{errore}</p>}
       </div>

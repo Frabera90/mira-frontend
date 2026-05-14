@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Save, LogOut, Send, RotateCcw, Smartphone, Share, CreditCard, Trash2, AlertTriangle, X } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
+import { DEFAULT_DAYS, encodeOperativita, parseOperativita, promptTime, type Operativita } from '../lib/operativita'
 
 interface RistoranteData {
   nome: string
@@ -12,6 +13,7 @@ interface RistoranteData {
   coperti_medi: number | null
   ora_briefing: string | null
   ora_report_serale: string | null
+  giorni_apertura: number[] | null
   telegram_chat_id: string | null
 }
 
@@ -124,6 +126,60 @@ function ConfirmDeleteSheet({ cfg, onClose }: { cfg: DeleteConfig; onClose: () =
   )
 }
 
+function ServizioBox({
+  title, active, dalle, alle, onActive, onDalle, onAlle,
+}: {
+  title: string
+  active: boolean
+  dalle: string
+  alle: string
+  onActive: (value: boolean) => void
+  onDalle: (value: string) => void
+  onAlle: (value: string) => void
+}) {
+  return (
+    <div className={`rounded-xl border p-3 ${active ? 'border-terra/25 bg-terra/5' : 'border-slate-100 bg-slate-50'}`}>
+      <label className="flex items-center justify-between gap-3">
+        <span>
+          <span className="block text-sm font-semibold text-caffe">{title}</span>
+          <span className="block text-[11px] text-slate-400 mt-0.5">
+            {active ? `Mira chiede i coperti alle ${promptTime(dalle)}` : 'Nessun messaggio automatico'}
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={active}
+          onChange={e => onActive(e.target.checked)}
+          className="w-5 h-5 accent-terra"
+        />
+      </label>
+
+      {active && (
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-maro mb-1">Dalle</label>
+            <input
+              type="time"
+              value={dalle}
+              onChange={e => onDalle(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-terra"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-maro mb-1">Alle</label>
+            <input
+              type="time"
+              value={alle}
+              onChange={e => onAlle(e.target.value)}
+              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-terra"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   onBack: () => void
   onNavigate?: (page: string) => void
@@ -150,17 +206,22 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
     nome: '', indirizzo: null, citta: null,
     email_contatto: null, telefono: null,
     coperti_medi: null, ora_briefing: null, ora_report_serale: null,
+    giorni_apertura: DEFAULT_DAYS,
     telegram_chat_id: null,
   })
+  const [operativita, setOperativita] = useState<Operativita>(() => parseOperativita(DEFAULT_DAYS))
 
   useEffect(() => {
     supabase
       .from('ristoranti')
-      .select('nome, indirizzo, citta, email_contatto, telefono, coperti_medi, ora_briefing, ora_report_serale, telegram_chat_id')
+      .select('nome, indirizzo, citta, email_contatto, telefono, coperti_medi, ora_briefing, ora_report_serale, giorni_apertura, telegram_chat_id')
       .eq('id', ristoranteId)
       .single()
       .then(({ data }) => {
-        if (data) setRist(data as RistoranteData)
+        if (data) {
+          setRist(data as RistoranteData)
+          setOperativita(parseOperativita(data.giorni_apertura))
+        }
         setLoading(false)
       })
   }, [])
@@ -184,6 +245,7 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
         coperti_medi:      rist.coperti_medi ? Number(rist.coperti_medi) : null,
         ora_briefing:      rist.ora_briefing,
         ora_report_serale: rist.ora_report_serale,
+        giorni_apertura:   encodeOperativita(operativita),
         telegram_chat_id:  rist.telegram_chat_id?.trim() || null,
       })
       .eq('id', ristoranteId)
