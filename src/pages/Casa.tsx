@@ -530,7 +530,9 @@ function KpiCard({
 }
 
 function MiraStatusCard({ status, onNavigate }: { status: SetupStatus; onNavigate: (page: string) => void }) {
-  const score = Math.max(0, Math.min(100, status.quality?.score ?? 0))
+  const hasBasicSetup = Boolean(status.ready)
+  const fallbackScore = hasBasicSetup ? 70 : 25
+  const score = Math.max(0, Math.min(100, status.quality?.score ?? fallbackScore))
   const issue = status.quality?.issues?.[0]
   const action = issue?.action ?? status.quality?.next_action
   const ok = score >= 85 && !issue
@@ -552,7 +554,9 @@ function MiraStatusCard({ status, onNavigate }: { status: SetupStatus; onNavigat
             <div className={`h-full rounded-full ${barColor}`} style={{ width: `${score}%` }} />
           </div>
           <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-            {issue ? issue.text : status.quality.summary}
+            {issue
+              ? issue.text
+              : status.quality?.summary ?? 'MIRA sta controllando menu, fatture, scorte e collegamento Telegram.'}
           </p>
           <div className="grid grid-cols-3 gap-2 mt-3">
             <MiniMetric label="Menu" value={status.counts.piatti} />
