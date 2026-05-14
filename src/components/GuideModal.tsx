@@ -19,6 +19,16 @@ interface Tasks {
   menu: boolean
 }
 
+interface SetupStatus {
+  tasks: Tasks
+  counts: {
+    fatture: number
+    piatti: number
+    scorte: number
+  }
+  ready: boolean
+}
+
 interface PiattoForm {
   nome: string
   categoria: string
@@ -30,6 +40,7 @@ const CATEGORIE = ['antipasto', 'primo', 'secondo', 'contorno', 'dessert', 'beva
 
 export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   const [tasks, setTasks]         = useState<Tasks>({ telegram: false, fattura: false, menu: false })
+  const [counts, setCounts]       = useState<SetupStatus['counts']>({ fatture: 0, piatti: 0, scorte: 0 })
   const [loaded, setLoaded]       = useState(false)
   const [open, setOpen]           = useState(true)
   const [active, setActive]       = useState<keyof Tasks | null>('telegram')
@@ -60,34 +71,29 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   // Menu AI
   const [analisiMenu, setAnalisiMenu] = useState<'idle' | 'loading' | 'ok' | 'err'>('idle')
   const [errMenu, setErrMenu]     = useState('')
+  const [menuResult, setMenuResult] = useState<{ totale: number; ingredienti: number } | null>(null)
+
+  async function refreshSetup(nextActive = true) {
+    const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/setup-status`)
+    const json = await res.json()
+    if (!json.ok) throw new Error(json.error ?? 'Errore stato configurazione')
+    const status = json.data as SetupStatus
+    setTasks(status.tasks)
+    setCounts(status.counts)
+    if (nextActive) {
+      const first = (Object.keys(status.tasks) as (keyof Tasks)[]).find(k => !status.tasks[k])
+      setActive(first ?? null)
+    }
+    if (!status.ready) localStorage.removeItem('mira_guide_dismissed')
+    if (status.ready && localStorage.getItem('mira_guide_dismissed') !== 'true') {
+      setShowComplete(true)
+    }
+  }
 
   useEffect(() => {
-    async function checkTasks() {
-      try {
-        const [
-          { data: rist },
-          { count: nFatture },
-          { count: nPiatti },
-        ] = await Promise.all([
-          supabase.from('ristoranti').select('telegram_chat_id').eq('id', ristoranteId).single(),
-          supabase.from('fatture').select('*', { count: 'exact', head: true }).eq('ristorante_id', ristoranteId),
-          supabase.from('piatti').select('*', { count: 'exact', head: true }).eq('ristorante_id', ristoranteId),
-        ])
-        const t = {
-          telegram: !!rist?.telegram_chat_id,
-          fattura:  (nFatture ?? 0) > 0,
-          menu:     (nPiatti ?? 0) > 0,
-        }
-        setTasks(t)
-        if (rist?.telegram_chat_id) setChatId(rist.telegram_chat_id)
-        // auto-expand first incomplete task
-        const first = (Object.keys(t) as (keyof Tasks)[]).find(k => !t[k])
-        setActive(first ?? null)
-      } finally {
-        setLoaded(true)
-      }
-    }
-    checkTasks()
+    refreshSetup()
+      .catch(() => {})
+      .finally(() => setLoaded(true))
   }, [ristoranteId])
 
   const allDone = tasks.telegram && tasks.fattura && tasks.menu
@@ -111,6 +117,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
         if (next.telegram && next.fattura && next.menu) setShowComplete(true)
         return next
       })
+      refreshSetup(false).catch(() => {})
       setTimeout(() => setActive('fattura'), 800)
     } else {
       setTgError('Non risulta ancora collegato. Apri Telegram, premi START e poi riprova la verifica.')
@@ -146,6 +153,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
           fornitore: json.data?.estratti?.fornitore_nome,
           righe: json.data?.estratti?.righe?.length ?? 0,
         })
+        refreshSetup(false).catch(() => {})
         setTasks(t => {
           const next = { ...t, fattura: true }
           if (next.telegram && next.fattura && next.menu) setShowComplete(true)
@@ -183,6 +191,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
         const json = await res.json()
         if (!json.ok) throw new Error(json.error)
         setAnalisiMenu('ok')
+        setMenuResult({
+          totale: json.data?.totale ?? 0,
+          ingredienti: json.data?.ingredienti_creati ?? 0,
+        })
+        refreshSetup(false).catch(() => {})
         setTasks(t => {
           const next = { ...t, menu: true }
           if (next.telegram && next.fattura && next.menu) setShowComplete(true)
@@ -232,6 +245,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
       else await supabase.from('piatti').insert(payload)
     }
     setSavingMenu(false)
+    refreshSetup(false).catch(() => {})
     setTasks(t => {
       const next = { ...t, menu: true }
       if (next.telegram && next.fattura && next.menu) setShowComplete(true)
@@ -242,10 +256,11 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
   // ── Render ────────────────────────────────────────────────────
 
   function chiudiGuida() {
+    if (!allDone) return
     setOpen(false)
   }
 
-  if (!open) {
+  if (!open && allDone) {
     return (
       <button
         onClick={() => setOpen(true)}
@@ -301,12 +316,17 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-caffe">Configura MIRA</h2>
-            <p className="text-xs text-slate-400 mt-0.5">{done} di {total} completati</p>
+            <h2 className="text-lg font-bold text-caffe">MIRA ti guida passo passo</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {done} di {total} completati
+              {counts.scorte > 0 ? ` · ${counts.scorte} prodotti in scorte` : ''}
+            </p>
           </div>
-          <button onClick={chiudiGuida} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl" aria-label="Riduci guida">
-            <X size={18} />
-          </button>
+          {allDone && (
+            <button onClick={chiudiGuida} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl" aria-label="Chiudi guida">
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -395,6 +415,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                           await supabase.from('ristoranti').update({ telegram_chat_id: chatId.trim() }).eq('id', ristoranteId)
                           setSavingTg(false)
                           setTgSaved(true)
+                          refreshSetup(false).catch(() => {})
                           setTasks(t => {
                             const next = { ...t, telegram: true }
                             if (next.telegram && next.fattura && next.menu) setShowComplete(true)
@@ -453,16 +474,16 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => { setOpen(false); onNavigate('magazzino') }}
+                        onClick={() => setActive('menu')}
                         className="rounded-xl bg-terra text-white py-2.5 text-xs font-semibold"
                       >
-                        Vedi Scorte
+                        Continua col menu
                       </button>
                       <button
-                        onClick={() => setActive('menu')}
+                        onClick={() => fatturaFileRef.current?.click()}
                         className="rounded-xl border border-slate-200 text-slate-600 py-2.5 text-xs font-semibold"
                       >
-                        Continua
+                        Altra fattura
                       </button>
                     </div>
                   </div>
@@ -489,7 +510,7 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                 />
               </div>
               <button
-                onClick={() => { setOpen(false); onNavigate('fattura') }}
+                onClick={() => onNavigate('fattura')}
                 className="w-full border border-slate-200 text-slate-500 font-medium rounded-xl py-2.5 text-xs flex items-center justify-center gap-2"
               >
                 <Camera size={15} />
@@ -521,9 +542,21 @@ export default function GuideModal({ ristoranteId, onNavigate }: Props) {
                   </div>
                 )}
                 {analisiMenu === 'ok' && (
-                  <div className="flex items-center gap-2 py-2">
-                    <CheckCircle size={16} className="text-emerald-600" />
-                    <p className="text-sm text-emerald-700 font-semibold">Menu salvato!</p>
+                  <div className="flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-3">
+                    <CheckCircle size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-emerald-800 font-semibold">Menu salvato</p>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        {menuResult?.totale
+                          ? `${menuResult.totale} voci caricate tra piatti, vini e bevande.`
+                          : 'Ho letto il file: controlla la pagina Menu se vuoi verificare le voci.'}
+                      </p>
+                      {menuResult?.ingredienti ? (
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          {menuResult.ingredienti} prodotti beverage collegati alle scorte.
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 )}
                 {analisiMenu === 'err' && (
