@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Copy, Check, Eye, EyeOff, Upload, Terminal, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Copy, Check, Eye, EyeOff, Upload, Terminal, ChevronDown, PlayCircle, Sun, Moon } from 'lucide-react'
 import { BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
 
@@ -29,6 +29,8 @@ export default function CollegaCassa({ onBack }: Props) {
   const [csvDataStr, setCsvDataStr] = useState(() => new Date().toISOString().slice(0, 10))
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [simulating, setSimulating] = useState<'pranzo' | 'cena' | null>(null)
+  const [simResult, setSimResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const webhookUrl = `${BACKEND_URL}/api/ristoranti/${ristoranteId}/pos/vendite`
 
@@ -126,6 +128,38 @@ export default function CollegaCassa({ onBack }: Props) {
     setImporting(false)
   }
 
+  async function simulaCassa(servizio: 'pranzo' | 'cena') {
+    if (!apiKey) return
+    setSimulating(servizio)
+    setSimResult(null)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/pos/simula`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          servizio,
+          data: new Date().toISOString().slice(0, 10),
+        }),
+      })
+      const json = await res.json()
+      if (json.ok) {
+        const d = json.data
+        setSimResult({
+          ok: true,
+          msg: `${servizio === 'pranzo' ? 'Pranzo' : 'Cena'} simulata: ${d.vendite?.length ?? 0} righe cassa, ${d.piatti_salvati ?? 0} voci menu, ${d.ingredienti_scalati ?? 0} ingredienti scalati.`,
+        })
+      } else {
+        setSimResult({ ok: false, msg: json.error ?? 'Errore simulazione' })
+      }
+    } catch (err: any) {
+      setSimResult({ ok: false, msg: err.message })
+    }
+    setSimulating(null)
+  }
+
   return (
     <div className="p-4 pb-10">
       <div className="flex items-center gap-2 pt-2 mb-6">
@@ -142,6 +176,49 @@ export default function CollegaCassa({ onBack }: Props) {
           Collega qualsiasi POS o software di cassa a MIRA tramite webhook o importazione CSV.
           Ogni vendita aggiorna automaticamente il magazzino e calcola il food cost reale.
         </div>
+
+        {/* Test register */}
+        <section>
+          <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Simulatore cassa test</p>
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-terra/10 text-terra flex items-center justify-center shrink-0">
+                <PlayCircle size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-caffe">Manda vendite finte come un POS reale</p>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Usa il menu attivo, simula pranzo o cena e aggiorna davvero scorte, movimenti e food cost.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => simulaCassa('pranzo')}
+                disabled={!apiKey || !!simulating}
+                className="rounded-xl border border-slate-200 py-3 px-3 text-sm font-semibold text-caffe flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Sun size={16} />
+                {simulating === 'pranzo' ? 'Invio...' : 'Simula pranzo'}
+              </button>
+              <button
+                onClick={() => simulaCassa('cena')}
+                disabled={!apiKey || !!simulating}
+                className="rounded-xl bg-terra text-white py-3 px-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Moon size={16} />
+                {simulating === 'cena' ? 'Invio...' : 'Simula cena'}
+              </button>
+            </div>
+
+            {simResult && (
+              <div className={`rounded-xl p-3 text-sm leading-relaxed ${simResult.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                {simResult.msg}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Webhook URL */}
         <section>
