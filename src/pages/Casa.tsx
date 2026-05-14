@@ -230,6 +230,7 @@ export default function Casa({ onNavigate }: CasaProps) {
     weekday: 'long', day: 'numeric', month: 'long',
   })
   const copertiPrevisti = briefing?.prenotazioni.reduce((s, p) => s + (p.coperti ?? 0), 0) ?? 0
+  const detailedBriefing = null as Briefing | null
 
   return (
     <div className="p-4 space-y-5">
@@ -390,17 +391,35 @@ export default function Casa({ onNavigate }: CasaProps) {
         </div>
       )}
 
-      {briefing && (
+      {briefing && onNavigate && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+            <ClipboardCheck size={17} className="text-caffe" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-caffe">Dettaglio operativo</p>
+            <p className="text-xs text-slate-400 mt-0.5">Ordini, scadenze e coperti restano nelle sezioni dedicate.</p>
+          </div>
+          <button
+            onClick={() => onNavigate('ordini')}
+            className="text-xs font-semibold text-terra bg-terra/10 rounded-xl px-3 py-2 shrink-0"
+          >
+            Ordini
+          </button>
+        </div>
+      )}
+
+      {detailedBriefing && (
         <div className="space-y-3">
           {/* Ordini urgenti */}
           <Section
             title="Ordini urgenti"
             Icon={AlertTriangle}
-            count={briefing.ordini_urgenti.length}
+            count={detailedBriefing.ordini_urgenti.length}
             accent="rose"
             empty="Nessun ordine urgente"
           >
-            {briefing.ordini_urgenti.map((o, i) => (
+            {detailedBriefing.ordini_urgenti.map((o, i) => (
               <Row key={i}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
@@ -423,11 +442,11 @@ export default function Casa({ onNavigate }: CasaProps) {
           <Section
             title="In scadenza"
             Icon={Clock}
-            count={briefing.prodotti_scadenza.length}
+            count={detailedBriefing.prodotti_scadenza.length}
             accent="amber"
             empty="Nessun prodotto in scadenza"
           >
-            {briefing.prodotti_scadenza.map((p, i) => (
+            {detailedBriefing.prodotti_scadenza.map((p, i) => (
               <Row key={i}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
@@ -451,7 +470,7 @@ export default function Casa({ onNavigate }: CasaProps) {
             accent="indigo"
             empty="Nessun coperto indicato"
           >
-            {briefing.prenotazioni.map((p, i) => (
+            {detailedBriefing.prenotazioni.map((p, i) => (
               <Row key={i}>
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
@@ -473,15 +492,15 @@ export default function Casa({ onNavigate }: CasaProps) {
           </Section>
 
           {/* Alert prezzi */}
-          {briefing.alert_prezzi.length > 0 && (
+          {detailedBriefing.alert_prezzi.length > 0 && (
             <Section
               title="Alert prezzi"
               Icon={TrendingUp}
-              count={briefing.alert_prezzi.length}
+              count={detailedBriefing.alert_prezzi.length}
               accent="emerald"
               empty=""
             >
-              {briefing.alert_prezzi.map((a, i) => (
+              {detailedBriefing.alert_prezzi.map((a, i) => (
                 <Row key={i}>
                   <p className="font-medium text-caffe text-sm">{a.ingrediente}</p>
                   <span className="text-xs font-semibold text-emerald-600">+{Number(a.variazione).toFixed(1)}%</span>

@@ -52,7 +52,7 @@ const SUPPORTED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif',
 
 function ProgressDots({ step, total = 6 }: { step: number; total?: number }) {
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
+    <div className="flex items-center justify-center gap-2 mb-4 shrink-0">
       {Array.from({ length: total }, (_, i) => (
         <div
           key={i}
@@ -83,8 +83,8 @@ function StepShell({
   loading?: boolean
 }) {
   return (
-    <div className="min-h-screen bg-cream flex flex-col p-6 max-w-[480px] mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="h-dvh bg-cream flex flex-col px-4 py-3 max-w-[480px] mx-auto overflow-hidden">
+      <div className="flex items-center gap-3 mb-3 shrink-0">
         {onBack && (
           <button onClick={onBack} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 -ml-1 shrink-0">
             <ArrowLeft size={18} />
@@ -97,16 +97,16 @@ function StepShell({
 
       <ProgressDots step={step} />
 
-      <div className="flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto pb-4">
         <h2 className="text-2xl font-bold text-caffe leading-tight">{title}</h2>
-        <p className="text-maro mt-2 mb-6 leading-relaxed text-sm">{subtitle}</p>
+        <p className="text-maro mt-2 mb-4 leading-relaxed text-sm">{subtitle}</p>
         {children}
       </div>
 
       <button
         onClick={onNext}
         disabled={ctaDisabled || loading}
-        className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 mt-6 disabled:opacity-40 shadow-lg shadow-terra/20 transition-opacity"
+        className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 shadow-lg shadow-terra/20 transition-opacity"
       >
         {loading ? <Loader2 size={16} className="animate-spin" /> : null}
         {loading ? 'Un momento…' : <>{cta} <ChevronRight size={16} /></>}
