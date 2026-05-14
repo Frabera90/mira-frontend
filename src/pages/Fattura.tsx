@@ -139,7 +139,7 @@ export default function Fattura({ onBack }: Props) {
       setEstratti(json.data.estratti)
       setIngredientiCaricati(json.data.ingredienti_caricati ?? 0)
       setFase('risultato')
-      caricaStorico()
+      await caricaStorico()
     } catch (err) {
       setErrore(err instanceof Error ? err.message : 'Errore di rete')
       setFase('errore')
@@ -396,6 +396,18 @@ export default function Fattura({ onBack }: Props) {
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+            <p className="text-sm font-semibold text-caffe">Ricevuta importazione</p>
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              <MiniMetric label="Righe lette" value={String(estratti.righe.length)} />
+              <MiniMetric label="Scorte" value={String(ingredientiCaricati)} />
+              <MiniMetric label="Storico" value="Salvata" />
+            </div>
+            <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+              La fattura resta nello storico. Se un prodotto non ha nome o prezzo corretto, lo vedrai in Scorte e potrai correggerlo.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
             <div className="flex justify-between items-start mb-3">
               <div>
                 <p className="font-bold text-caffe text-lg">{estratti.fornitore_nome}</p>
@@ -467,6 +479,15 @@ export default function Fattura({ onBack }: Props) {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-slate-50 rounded-xl p-2 text-center">
+      <p className="text-sm font-bold text-caffe">{value}</p>
+      <p className="text-[10px] text-slate-400 mt-0.5">{label}</p>
     </div>
   )
 }

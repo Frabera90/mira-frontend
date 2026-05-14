@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   RefreshCw, AlertTriangle, Clock, Users, TrendingUp,
   Package, CalendarDays, Settings, ChefHat, ChevronRight,
-  Camera, UtensilsCrossed, Truck, ClipboardCheck,
+  Camera, UtensilsCrossed, Truck, ClipboardCheck, CheckCircle,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { useRistorante } from '../contexts/RistoranteContext'
@@ -106,6 +106,32 @@ interface PredictorAlert {
   fornitore: string | null
   messaggio: string
 }
+interface SetupIssue {
+  key: string
+  severity: 'blocking' | 'important'
+  title: string
+  text: string
+  action: { label: string; page: string }
+}
+interface SetupStatus {
+  ready: boolean
+  counts: {
+    fatture: number
+    piatti: number
+    scorte: number
+    piatti_attivi?: number
+    piatti_con_ricetta?: number
+    piatti_con_food_cost?: number
+    prodotti_prezzo?: number
+    prodotti_totali?: number
+  }
+  quality: {
+    score: number
+    summary: string
+    issues: SetupIssue[]
+    next_action: { label: string; page: string }
+  }
+}
 
 export default function Casa({ onNavigate }: CasaProps) {
   const ristoranteId = useRistorante()
@@ -114,6 +140,7 @@ export default function Casa({ onNavigate }: CasaProps) {
   const [errore, setErrore] = useState<string | null>(null)
   const [foodCostKpi, setFoodCostKpi] = useState<FoodCostKpi | null>(null)
   const [predictor, setPredictor] = useState<PredictorAlert[]>([])
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const nomeChef = localStorage.getItem('mira_chef_name') || 'Chef'
 
   const carica = useCallback(() => {
@@ -146,6 +173,17 @@ export default function Casa({ onNavigate }: CasaProps) {
     caricaPredictor()
   }, [caricaPredictor])
 
+  const caricaSetup = useCallback(() => {
+    fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/setup-status`)
+      .then(r => r.json())
+      .then(j => { if (j.ok) setSetupStatus(j.data) })
+      .catch(() => {})
+  }, [ristoranteId])
+
+  useEffect(() => {
+    caricaSetup()
+  }, [caricaSetup])
+
   useEffect(() => {
     supabase
       .from('piatti_food_cost')
@@ -169,6 +207,7 @@ export default function Casa({ onNavigate }: CasaProps) {
     const refresh = () => {
       carica()
       caricaPredictor()
+      caricaSetup()
     }
     window.addEventListener('focus', refresh)
 
@@ -183,7 +222,7 @@ export default function Casa({ onNavigate }: CasaProps) {
       window.removeEventListener('focus', refresh)
       supabase.removeChannel(channel)
     }
-  }, [carica, caricaPredictor, ristoranteId])
+  }, [carica, caricaPredictor, caricaSetup, ristoranteId])
 
   const ora   = new Date().getHours()
   const saluto = ora < 12 ? 'Buongiorno' : ora < 18 ? 'Buon pomeriggio' : 'Buonasera'
@@ -219,6 +258,10 @@ export default function Casa({ onNavigate }: CasaProps) {
           )}
         </div>
       </div>
+
+      {onNavigate && setupStatus && (
+        <MiraStatusCard status={setupStatus} onNavigate={onNavigate} />
+      )}
 
       {/* KPI Grid */}
       {loading ? (
@@ -282,9 +325,9 @@ export default function Casa({ onNavigate }: CasaProps) {
       {onNavigate && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { Icon: Camera,          label: 'Fattura',   page: 'fattura',         tone: 'text-terra bg-terra/10' },
-            { Icon: UtensilsCrossed, label: 'Menu',      page: 'menu',            tone: 'text-caffe bg-slate-100' },
-            { Icon: Users,           label: 'Servizio',  page: 'servizio-serale', tone: 'text-emerald-700 bg-emerald-50' },
+            { Icon: Camera,          label: 'Fattura',       page: 'fattura',      tone: 'text-terra bg-terra/10' },
+            { Icon: UtensilsCrossed, label: 'Menu',          page: 'menu',         tone: 'text-caffe bg-slate-100' },
+            { Icon: Users,           label: 'Fine servizio', page: 'vendite-csv',  tone: 'text-emerald-700 bg-emerald-50' },
           ].map(({ Icon, label, page, tone }) => (
             <button
               key={page}
@@ -329,7 +372,7 @@ export default function Casa({ onNavigate }: CasaProps) {
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
           {[
             { icon: Truck,           label: 'Fornitori',   page: 'fornitori',    color: 'bg-indigo-50 text-indigo-600' },
-            { icon: ClipboardCheck,  label: 'Sprechi', page: 'vendite-csv',  color: 'bg-amber-50 text-amber-700' },
+            { icon: ClipboardCheck,  label: 'Sprechi/avanzi', page: 'vendite-csv',  color: 'bg-amber-50 text-amber-700' },
             { icon: CalendarDays,    label: 'Coperti',      page: 'prenotazioni', color: 'bg-amber-50 text-amber-600' },
             { icon: ChefHat,         label: 'Food Cost',   page: 'food-cost',    color: 'bg-emerald-50 text-emerald-600' },
           ].map(({ icon: Icon, label, page, color }) => (
@@ -483,6 +526,67 @@ function KpiCard({
       <p className={`text-2xl font-bold ${value > 0 ? c.text : 'text-slate-300'}`}>{value}</p>
       <p className="text-xs text-slate-500 mt-0.5 font-medium">{label}</p>
     </Tag>
+  )
+}
+
+function MiraStatusCard({ status, onNavigate }: { status: SetupStatus; onNavigate: (page: string) => void }) {
+  const score = Math.max(0, Math.min(100, status.quality?.score ?? 0))
+  const issue = status.quality?.issues?.[0]
+  const action = issue?.action ?? status.quality?.next_action
+  const ok = score >= 85 && !issue
+  const scoreColor = score >= 85 ? 'text-emerald-700' : score >= 55 ? 'text-amber-700' : 'text-rose-700'
+  const barColor = score >= 85 ? 'bg-emerald-500' : score >= 55 ? 'bg-amber-500' : 'bg-rose-500'
+
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${ok ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-100'}`}>
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${ok ? 'bg-emerald-100 text-emerald-700' : 'bg-terra/10 text-terra'}`}>
+          {ok ? <CheckCircle size={19} /> : <AlertTriangle size={19} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-bold text-caffe">MIRA è pronta?</p>
+            <p className={`text-sm font-bold ${scoreColor}`}>{score}%</p>
+          </div>
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${score}%` }} />
+          </div>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            {issue ? issue.text : status.quality.summary}
+          </p>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            <MiniMetric label="Menu" value={status.counts.piatti} />
+            <MiniMetric label="Fatture" value={status.counts.fatture} />
+            <MiniMetric label="Scorte" value={status.counts.scorte} />
+          </div>
+          {(status.counts.piatti_attivi ?? 0) > 0 && (
+            <p className="text-[11px] text-slate-400 mt-2">
+              Food cost calcolabile: {status.counts.piatti_con_food_cost ?? 0}/{status.counts.piatti_attivi ?? 0} voci menu · Prezzi: {status.counts.prodotti_prezzo ?? 0}/{status.counts.prodotti_totali ?? 0}
+            </p>
+          )}
+        </div>
+      </div>
+      {action && (
+        <button
+          onClick={() => onNavigate(action.page)}
+          className={`mt-4 w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 ${
+            ok ? 'bg-emerald-600 text-white' : 'bg-terra text-white'
+          }`}
+        >
+          {issue ? action.label : 'Continua con MIRA'}
+          <ChevronRight size={15} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-slate-50 rounded-xl p-2 text-center">
+      <p className="text-sm font-bold text-caffe">{value}</p>
+      <p className="text-[10px] text-slate-400 mt-0.5">{label}</p>
+    </div>
   )
 }
 

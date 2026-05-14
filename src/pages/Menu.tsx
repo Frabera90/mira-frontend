@@ -537,7 +537,7 @@ export default function Menu({ onBack }: Props) {
               <p className="text-sm font-semibold">Menu aggiornato</p>
               <p className="text-xs mt-1">
                 {scanEsito.totale > 0
-                  ? `${scanEsito.totale} prodotti caricati. Apri ogni piatto con l'icona libro per inserire le grammature e calcolare il food cost.`
+                  ? `${scanEsito.totale} voci salvate nel menu. ${scanEsito.ingredienti > 0 ? `${scanEsito.ingredienti} prodotti beverage collegati alle scorte. ` : ''}Apri le voci senza ricetta per completare il food cost.`
                   : 'Ho letto il file, ma non ho trovato nuovi prodotti. Riprova con una foto più nitida.'}
               </p>
             </div>
