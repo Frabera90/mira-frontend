@@ -560,7 +560,7 @@ function FatturaStep(props: {
       <StepTitle
         Icon={FileText}
         title="Ora carica una fattura"
-        text="MIRA legge prodotti, quantita e prezzi. Se un ingrediente del menu non e ancora coperto da una fattura, lo capira e te lo potra chiedere dopo."
+        text="Carica tutte le fatture recenti che coprono gli ingredienti del menu. Una sola fattura puo bastare per partire, ma non per un food cost affidabile."
       />
       <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
         {props.analisi === 'loading' && <LoadingLine text="Leggo la fattura e aggiorno scorte e prezzi..." />}
@@ -568,7 +568,7 @@ function FatturaStep(props: {
         {props.analisi === 'ok' && (
           <SuccessBox
             title="Fattura salvata"
-            text={props.result?.ingredienti ? `${props.result.ingredienti} prodotti caricati in Scorte.` : `${props.result?.righe ?? 0} righe lette. Controlla Scorte per verificare.`}
+            text={props.result?.ingredienti ? `${props.result.ingredienti} prodotti caricati in Scorte. Se ti mancano fornitori o ingredienti del menu, carica un'altra fattura prima di continuare.` : `${props.result?.righe ?? 0} righe lette. Controlla Scorte per verificare.`}
             detail={props.result?.fornitore}
           />
         )}
@@ -582,10 +582,10 @@ function FatturaStep(props: {
       {(props.done || props.analisi === 'ok') && (
         <div className="grid grid-cols-2 gap-2">
           <button onClick={props.onChooseFile} className="rounded-xl border border-slate-200 text-slate-600 py-3 text-sm font-semibold">
-            Altra fattura
+            Carica altra fattura
           </button>
           <button onClick={props.onNext} className="rounded-xl bg-terra text-white py-3 text-sm font-semibold">
-            Continua
+            Ho finito con le fatture
           </button>
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ChevronRight, ArrowLeft, Upload, FileImage, CheckCircle,
-  Loader2, RotateCcw, UtensilsCrossed, Package, ChefHat, Send,
+  Loader2, RotateCcw, UtensilsCrossed, Package, ChefHat, Send, CreditCard,
 } from 'lucide-react'
 import { supabase, BACKEND_URL } from '../lib/supabase'
 import { encodeOperativita, parseOperativita } from '../lib/operativita'
@@ -50,7 +50,7 @@ const SUPPORTED = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif',
 
 // ── helpers ───────────────────────────────────────────────────
 
-function ProgressDots({ step, total = 6 }: { step: number; total?: number }) {
+function ProgressDots({ step, total = 7 }: { step: number; total?: number }) {
   return (
     <div className="flex items-center justify-center gap-2 mb-4 shrink-0">
       {Array.from({ length: total }, (_, i) => (
@@ -70,9 +70,10 @@ function ProgressDots({ step, total = 6 }: { step: number; total?: number }) {
 }
 
 function StepShell({
-  step, title, subtitle, children, cta, ctaDisabled, onBack, onNext, loading,
+  step, total = 7, title, subtitle, children, cta, ctaDisabled, onBack, onNext, loading,
 }: {
   step: number
+  total?: number
   title: string
   subtitle: string
   children: React.ReactNode
@@ -95,7 +96,7 @@ function StepShell({
         </div>
       </div>
 
-      <ProgressDots step={step} />
+      <ProgressDots step={step} total={total} />
 
       <div className="flex-1 min-h-0 overflow-y-auto pb-4">
         <h2 className="text-2xl font-bold text-caffe leading-tight">{title}</h2>
@@ -119,7 +120,7 @@ function StepShell({
 
 export default function Onboarding({ onComplete }: Props) {
   const [introSeen, setIntroSeen] = useState(false)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1)
   const [saving, setSaving] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
 
@@ -628,8 +629,8 @@ export default function Onboarding({ onComplete }: Props) {
     <StepShell
       step={3}
       title="Carica una fattura recente"
-      subtitle="MIRA legge ingredienti, prezzi e quantità consegnate — tutto automatico."
-      cta={fattureCaricate.length > 0 ? 'Avanti' : 'Salta per ora'}
+      subtitle="MIRA legge ingredienti, prezzi e quantita consegnate. Carica piu fatture se il menu usa fornitori diversi."
+      cta={fattureCaricate.length > 0 ? 'Ho finito con le fatture' : 'Salta per ora'}
       ctaDisabled={false}
       onBack={() => setStep(2)}
       onNext={() => setStep(4)}
@@ -711,6 +712,12 @@ export default function Onboarding({ onComplete }: Props) {
               className="w-full border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-600 flex items-center justify-center gap-2">
               <Upload size={14} /> Carica un'altra fattura
             </button>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs font-semibold text-amber-800">Prima di andare avanti</p>
+              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                Se mancano fatture per carne, pesce, beverage o altri ingredienti del menu, il food cost verra segnalato come incompleto.
+              </p>
+            </div>
           </div>
         )}
 
@@ -975,7 +982,7 @@ export default function Onboarding({ onComplete }: Props) {
                 onClick={() => setStep(6)}
                 className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
               >
-                Avanti — Collega Telegram <ChevronRight size={16} />
+                Avanti - Collega cassa <ChevronRight size={16} />
               </button>
               <p className="text-xs text-slate-400 text-center">
                 Puoi modificare ricette, grammature e prezzi in qualsiasi momento dal Food Cost.
@@ -989,6 +996,40 @@ export default function Onboarding({ onComplete }: Props) {
   }
 
   if (step === 6) {
+    return (
+      <StepShell
+        step={6}
+        total={7}
+        title="Collega la cassa"
+        subtitle="Senza vendite reali MIRA puo stimare, ma non puo confrontare consumi, sprechi e margini del servizio."
+        cta="Avanti - Telegram"
+        onBack={() => setStep(5)}
+        onNext={() => setStep(7)}
+      >
+        <div className="space-y-4">
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 flex gap-3">
+            <div className="w-10 h-10 rounded-xl bg-terra/10 text-terra flex items-center justify-center shrink-0">
+              <CreditCard size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-caffe">Perche serve</p>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                La cassa manda a MIRA cosa hai venduto a pranzo e cena. Da li scarico scorte, controllo ricette e segnalo sprechi o eccedenze.
+              </p>
+            </div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-sm font-semibold text-amber-800">Per ora ho attivo il simulatore test</p>
+            <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+              Dopo l'onboarding potrai collegare POS o CSV da Impostazioni - Collega Cassa. Nel frattempo il simulatore automatico manda segnali dopo pranzo e dopo cena.
+            </p>
+          </div>
+        </div>
+      </StepShell>
+    )
+  }
+
+  if (step === 7) {
     const telegramUrl = botUsername
       ? `https://t.me/${botUsername}?start=${ristoranteId}`
       : null
@@ -996,7 +1037,7 @@ export default function Onboarding({ onComplete }: Props) {
     return (
       <div className="min-h-screen bg-cream flex flex-col p-6 max-w-[480px] mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setStep(5)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 -ml-1 shrink-0">
+          <button onClick={() => setStep(6)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 -ml-1 shrink-0">
             <ArrowLeft size={18} />
           </button>
           <div className="w-8 h-8 rounded-xl bg-terra flex items-center justify-center shrink-0">
@@ -1004,7 +1045,7 @@ export default function Onboarding({ onComplete }: Props) {
           </div>
         </div>
 
-        <ProgressDots step={6} total={6} />
+        <ProgressDots step={7} total={7} />
 
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-caffe leading-tight">Collega Telegram</h2>
@@ -1080,3 +1121,5 @@ export default function Onboarding({ onComplete }: Props) {
 
   return null
 }
+
+
