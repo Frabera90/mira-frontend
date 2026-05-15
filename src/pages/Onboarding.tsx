@@ -43,6 +43,15 @@ interface AbbinaItem {
 }
 interface PiattoNonAbbinato { id: string; nome: string; categoria: string | null }
 interface FornitoreRiassunto { nome: string; totale: number }
+interface DomandaMira {
+  tipo: 'fattura_mancante' | 'ricetta_mancante'
+  piatto_id: string
+  piatto: string
+  titolo: string
+  domanda: string
+  azione: string
+  ingredienti: string[]
+}
 
 const TIPI_CUCINA = ['Italiana', 'Pesce', 'Carne', 'Pizza', 'Trattoria', 'Bar / Bistro', 'Fusion', 'Altro']
 const ACCEPTED = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
@@ -178,6 +187,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [abbinamenti, setAbbinamenti] = useState<AbbinaItem[]>([])
   const [piattiTotali, setPiattiTotali] = useState(0)
   const [piattiNonAbbinati, setPiattiNonAbbinati] = useState<PiattoNonAbbinato[]>([])
+  const [domandeMira, setDomandeMira] = useState<DomandaMira[]>([])
   const [fornitori, setFornitori] = useState<FornitoreRiassunto[]>([])
   const [totaleSpesa, setTotaleSpesa] = useState(0)
 
@@ -386,6 +396,7 @@ export default function Onboarding({ onComplete }: Props) {
       setAbbinamenti(d.abbinamenti ?? [])
       setPiattiTotali(d.piatti_totali ?? 0)
       setPiattiNonAbbinati(d.piatti_non_abbinati ?? [])
+      setDomandeMira(d.domande ?? [])
       setFornitori(d.fornitori ?? [])
       setTotaleSpesa(d.totale_fatture ?? 0)
     } catch (e: any) {
@@ -872,6 +883,30 @@ export default function Onboarding({ onComplete }: Props) {
                 </div>
               ))}
             </div>
+
+            {domandeMira.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Domande di MIRA</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Non usero questi food cost come definitivi</p>
+                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                      Ho trovato piatti o ingredienti non coperti dalle fatture. Queste sono le domande da risolvere prima di fidarsi dei margini.
+                    </p>
+                  </div>
+                  {domandeMira.slice(0, 6).map((d, i) => (
+                    <div key={`${d.piatto_id}-${i}`} className="bg-white/70 rounded-xl p-3 border border-amber-100">
+                      <p className="text-sm font-semibold text-caffe">{d.titolo}</p>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{d.domanda}</p>
+                      <p className="text-[11px] text-amber-700 mt-2 font-medium">{d.azione}</p>
+                    </div>
+                  ))}
+                  {domandeMira.length > 6 && (
+                    <p className="text-xs text-amber-700">+{domandeMira.length - 6} altre domande nel Food Cost.</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Fornitori breakdown */}
             {fornitori.length > 0 && (

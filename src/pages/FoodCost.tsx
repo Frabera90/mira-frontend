@@ -35,6 +35,17 @@ interface IngredienteOpzione {
   prezzo: number | null
 }
 
+interface DomandaMira {
+  tipo: 'fattura_mancante' | 'ricetta_mancante'
+  piatto_id: string
+  piatto: string
+  titolo: string
+  domanda: string
+  azione: string
+  ingredienti: string[]
+  coverage_pct?: number
+}
+
 function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse bg-slate-100 rounded-xl ${className}`} />
 }
@@ -61,8 +72,19 @@ export default function FoodCost({ onBack }: Props) {
   const [mostraAdd, setMostraAdd]     = useState(false)
   const [ricalcola, setRicalcola]     = useState(false)
   const [ricalcolaMsg, setRicalcolaMsg] = useState<string | null>(null)
+  const [domande, setDomande]         = useState<DomandaMira[]>([])
 
   const carica = useCallback(() => setTick(t => t + 1), [])
+
+  const caricaDomande = useCallback(async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ristoranti/${ristoranteId}/food-cost/domande`)
+      const json = await res.json()
+      if (json.ok) setDomande(json.data?.domande ?? [])
+    } catch {
+      setDomande([])
+    }
+  }, [ristoranteId])
 
   async function ricalcolaFoodCost() {
     setRicalcola(true)
@@ -77,6 +99,7 @@ export default function FoodCost({ onBack }: Props) {
       const d = json.data
       const abbinati = d.abbinamenti?.length ?? 0
       const nonAbb = d.piatti_non_abbinati?.length ?? 0
+      setDomande(d.domande ?? [])
       setRicalcolaMsg(`✓ ${abbinati} ricette aggiornate${nonAbb > 0 ? ` · ${nonAbb} piatti senza ricetta standard` : ''}`)
       carica()
     } catch (e: any) {
@@ -97,16 +120,24 @@ export default function FoodCost({ onBack }: Props) {
         setPiatti((data as Piatto[]) ?? [])
         setLoading(false)
       })
-  }, [tick])
+  }, [ristoranteId, tick])
 
-  const avgFoodCost = piatti.length
-    ? piatti.filter(p => p.food_cost_pct !== null).reduce((s, p) => s + (p.food_cost_pct ?? 0), 0) /
-      piatti.filter(p => p.food_cost_pct !== null).length
+  useEffect(() => {
+    caricaDomande()
+  }, [caricaDomande, tick])
+
+  const piattiConFoodCostAffidabile = piatti.filter(
+    p => p.food_cost_pct !== null && !domande.some(d => d.piatto_id === p.id)
+  )
+  const avgFoodCost = piattiConFoodCostAffidabile.length
+    ? piattiConFoodCostAffidabile.reduce((s, p) => s + (p.food_cost_pct ?? 0), 0) /
+      piattiConFoodCostAffidabile.length
     : null
 
-  const inAlert = piatti.filter(
+  const inAlert = piattiConFoodCostAffidabile.filter(
     p => p.food_cost_pct !== null && p.food_cost_pct > p.soglia_food_cost_pct
   ).length
+  const domandeByPiatto = new Map(domande.map(d => [d.piatto_id, d]))
 
   return (
     <div className="p-4">
@@ -181,6 +212,39 @@ export default function FoodCost({ onBack }: Props) {
         </div>
       )}
 
+      {!loading && domande.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Domande da risolvere prima di fidarsi dei margini</p>
+              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                Ho trovato piatti con ricette incomplete o ingredienti senza prezzo. Finche non rispondi, quei food cost restano parziali.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {domande.slice(0, 5).map((d, i) => (
+              <div key={`${d.piatto_id}-${i}`} className="bg-white/75 border border-amber-100 rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-caffe">{d.titolo}</p>
+                  {typeof d.coverage_pct === 'number' && (
+                    <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 shrink-0">
+                      {d.coverage_pct}% coperto
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{d.domanda}</p>
+                <p className="text-[11px] text-amber-700 mt-2 font-medium">{d.azione}</p>
+              </div>
+            ))}
+          </div>
+          {domande.length > 5 && (
+            <p className="text-xs text-amber-700 font-medium">+{domande.length - 5} altre domande da completare nei singoli piatti.</p>
+          )}
+        </div>
+      )}
+
       {/* Alert banner */}
       {!loading && inAlert > 0 && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 flex items-center gap-2.5 mb-4">
@@ -213,6 +277,7 @@ export default function FoodCost({ onBack }: Props) {
       <div className="space-y-3">
         {piatti.map(p => {
           const clr = foodCostColor(p.food_cost_pct, p.soglia_food_cost_pct)
+          const domanda = domandeByPiatto.get(p.id)
           return (
             <button
               key={p.id}
@@ -225,12 +290,19 @@ export default function FoodCost({ onBack }: Props) {
                   {p.categoria && <p className="text-xs text-slate-400 mt-0.5">{p.categoria}</p>}
                 </div>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${clr.badge}`}>
-                  {p.food_cost_pct !== null ? `${p.food_cost_pct.toFixed(1)}%` : 'N/D'}
+                  {domanda ? 'Da completare' : p.food_cost_pct !== null ? `${p.food_cost_pct.toFixed(1)}%` : 'N/D'}
                 </span>
               </div>
 
+              {domanda && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-2.5 mb-3">
+                  <p className="text-xs font-semibold text-amber-800">{domanda.titolo}</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">{domanda.domanda}</p>
+                </div>
+              )}
+
               {/* Food cost bar */}
-              {p.food_cost_pct !== null && (
+              {p.food_cost_pct !== null && !domanda && (
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
                   <div
                     className={`h-full rounded-full transition-all ${clr.bar}`}
