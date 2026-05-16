@@ -51,6 +51,7 @@ interface DomandaMira {
   domanda: string
   azione: string
   ingredienti: string[]
+  coverage_pct?: number
 }
 
 const TIPI_CUCINA = ['Italiana', 'Pesce', 'Carne', 'Pizza', 'Trattoria', 'Bar / Bistro', 'Fusion', 'Altro']
@@ -166,7 +167,7 @@ export default function Onboarding({ onComplete }: Props) {
   const [checkingTelegram, setCheckingTelegram] = useState(false)
 
   useEffect(() => {
-    if (step !== 6) return
+    if (step !== 7) return
     fetch(`${BACKEND_URL}/api/telegram/bot-username`)
       .then(r => r.json())
       .then(j => j.username && setBotUsername(j.username))
@@ -367,7 +368,7 @@ export default function Onboarding({ onComplete }: Props) {
       await supabase.from('scorte').upsert(upserts, { onConflict: 'ristorante_id,ingrediente_id' })
     }
     setSavingScorte(false)
-    avviaAbbinamento()
+    setStep(6)
   }
 
   // ── Step 5 — Abbinamento AI ──────────────────────────────────
@@ -639,12 +640,12 @@ export default function Onboarding({ onComplete }: Props) {
   if (step === 3) return (
     <StepShell
       step={3}
-      title="Carica una fattura recente"
-      subtitle="MIRA legge ingredienti, prezzi e quantita consegnate. Carica piu fatture se il menu usa fornitori diversi."
-      cta={fattureCaricate.length > 0 ? 'Ho finito con le fatture' : 'Salta per ora'}
-      ctaDisabled={false}
+      title="Carica le fatture dei fornitori"
+      subtitle="Servono tutte le fatture che coprono menu, beverage e dolci. Se manca un ingrediente, MIRA te lo dira prima di proseguire."
+      cta={fattureCaricate.length > 0 ? 'Controlla copertura menu' : 'Carica almeno una fattura'}
+      ctaDisabled={fattureCaricate.length === 0}
       onBack={() => setStep(2)}
-      onNext={() => setStep(4)}
+      onNext={avviaAbbinamento}
     >
       <div className="space-y-4">
         {/* Avviso menu saltato */}
@@ -726,7 +727,7 @@ export default function Onboarding({ onComplete }: Props) {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
               <p className="text-xs font-semibold text-amber-800">Prima di andare avanti</p>
               <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                Se mancano fatture per carne, pesce, beverage o altri ingredienti del menu, il food cost verra segnalato come incompleto.
+                Dopo il controllo, se mancano carne, pesce, beverage, dolci o ingredienti dei piatti, MIRA ti chiedera altre fatture o correzioni manuali.
               </p>
             </div>
           </div>
@@ -739,11 +740,11 @@ export default function Onboarding({ onComplete }: Props) {
 
   if (step === 4) return (
     <StepShell
-      step={4}
+      step={5}
       title="Quanto hai adesso in magazzino?"
-      subtitle="La fattura indica quello che hai ricevuto. Aggiusta le quantità con quello che hai davvero in cucina oggi."
-      cta="Avanti — MIRA elabora"
-      onBack={() => setStep(3)}
+      subtitle="Ora che menu e fatture sono stati controllati, dimmi le quantita reali che hai oggi in cucina, bar e cantina."
+      cta="Avanti - Collega cassa"
+      onBack={() => setStep(5)}
       onNext={salvaScorteEAvanza}
       loading={savingScorte}
     >
@@ -810,7 +811,7 @@ export default function Onboarding({ onComplete }: Props) {
 
     return (
       <div className="min-h-screen bg-cream flex flex-col p-5 max-w-[480px] mx-auto">
-        <ProgressDots step={5} />
+        <ProgressDots step={4} />
 
         {abbinaLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center space-y-8 text-center">
@@ -1013,14 +1014,45 @@ export default function Onboarding({ onComplete }: Props) {
 
             {/* CTA */}
             <div className="pt-2 space-y-3">
-              <button
-                onClick={() => setStep(6)}
-                className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
-              >
-                Avanti - Collega cassa <ChevronRight size={16} />
-              </button>
+              {domandeMira.length > 0 ? (
+                <>
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <p className="text-sm font-semibold text-amber-900">Prima devo chiudere questi buchi</p>
+                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                      Carica le fatture mancanti o completa manualmente ricette, grammature e prezzi. Poi ricalcolo la copertura.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setStep(3)}
+                      className="bg-white border border-slate-200 text-caffe font-semibold rounded-xl py-3 flex items-center justify-center gap-2"
+                    >
+                      <Upload size={15} /> Fatture
+                    </button>
+                    <button
+                      onClick={avviaAbbinamento}
+                      className="bg-terra text-white font-semibold rounded-xl py-3 flex items-center justify-center gap-2"
+                    >
+                      <RotateCcw size={15} /> Ricontrolla
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setStep(4)}
+                    className="w-full border border-amber-200 text-amber-800 bg-amber-50 font-semibold rounded-xl py-3"
+                  >
+                    Continua in modalita test
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setStep(4)}
+                  className="w-full bg-terra text-white font-semibold rounded-xl py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-terra/20"
+                >
+                  Avanti - Stock attuale <ChevronRight size={16} />
+                </button>
+              )}
               <p className="text-xs text-slate-400 text-center">
-                Puoi modificare ricette, grammature e prezzi in qualsiasi momento dal Food Cost.
+                Se la copertura non e completa, MIRA non considera definitivi food cost e scarichi.
               </p>
             </div>
 
