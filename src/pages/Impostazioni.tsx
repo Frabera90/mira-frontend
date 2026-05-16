@@ -436,6 +436,48 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
           {/* Operatività */}
           <section>
             <p className="text-xs font-semibold text-maro uppercase tracking-wide mb-3">Operatività</p>
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm space-y-4 mb-3">
+              <div>
+                <p className="text-sm font-semibold text-caffe">Quando siete aperti?</p>
+                <p className="text-xs text-slate-400 mt-1">Mira usa questi orari per coperti, Telegram, simulazioni cassa e report.</p>
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {[[1, 'L'], [2, 'M'], [3, 'M'], [4, 'G'], [5, 'V'], [6, 'S'], [7, 'D']].map(([day, label]) => {
+                  const active = operativita.giorni.includes(Number(day))
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setOperativita(prev => ({
+                        ...prev,
+                        giorni: active ? prev.giorni.filter(g => g !== Number(day)) : [...prev.giorni, Number(day)].sort(),
+                      }))}
+                      className={`h-9 rounded-xl text-xs font-bold border ${active ? 'bg-terra text-white border-terra' : 'bg-slate-50 text-slate-400 border-slate-100'}`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <ServizioBox
+                title="Pranzo"
+                active={operativita.pranzo}
+                dalle={operativita.pranzo_dalle}
+                alle={operativita.pranzo_alle}
+                onActive={value => setOperativita(prev => ({ ...prev, pranzo: value }))}
+                onDalle={value => setOperativita(prev => ({ ...prev, pranzo_dalle: value }))}
+                onAlle={value => setOperativita(prev => ({ ...prev, pranzo_alle: value }))}
+              />
+              <ServizioBox
+                title="Cena"
+                active={operativita.cena}
+                dalle={operativita.cena_dalle}
+                alle={operativita.cena_alle}
+                onActive={value => setOperativita(prev => ({ ...prev, cena: value }))}
+                onDalle={value => setOperativita(prev => ({ ...prev, cena_dalle: value }))}
+                onAlle={value => setOperativita(prev => ({ ...prev, cena_alle: value }))}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-maro mb-1.5">Ora briefing</label>
@@ -526,17 +568,17 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
                     title: 'Cancella le fatture',
                     descrizione: 'Verranno eliminate tutte le fatture caricate con i relativi dati di spesa.',
                     cascata: [
+                      'Le scorte e il catalogo ingredienti del magazzino verranno svuotati',
                       'I prezzi di tutti gli ingredienti verranno azzerati',
-                      'Le scorte in magazzino verranno azzerate',
                       'Il food cost non sarà più calcolabile senza nuove fatture',
-                      'La spesa per fornitore andrà a zero',
+                      'Gli ordini urgenti scompariranno (nessun ingrediente da riordinare)',
                     ],
                     ctaLabel: 'Sì, cancella tutte le fatture',
                     onConfirm: async () => {
                       const { error: ef } = await supabase.from('fatture').delete().eq('ristorante_id', ristoranteId)
                       if (ef) throw new Error(ef.message)
                       await supabase.from('scorte').delete().eq('ristorante_id', ristoranteId)
-                      await supabase.from('ingredienti_ristorante').update({ prezzo_acquisto_corrente: null }).eq('ristorante_id', ristoranteId)
+                      await supabase.from('ingredienti_ristorante').delete().eq('ristorante_id', ristoranteId)
                     },
                   } as DeleteConfig,
                 },
@@ -552,6 +594,8 @@ export default function Impostazioni({ onBack, onNavigate }: Props) {
                     ],
                     ctaLabel: 'Sì, cancella tutti i fornitori',
                     onConfirm: async () => {
+                      await supabase.from('fatture').update({ fornitore_id: null }).eq('ristorante_id', ristoranteId)
+                      await supabase.from('ordini').update({ fornitore_id: null }).eq('ristorante_id', ristoranteId)
                       const { error } = await supabase.from('fornitori').delete().eq('ristorante_id', ristoranteId)
                       if (error) throw new Error(error.message)
                     },

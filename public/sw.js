@@ -1,3 +1,6 @@
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', event => event.waitUntil(clients.claim()));
+
 self.addEventListener('fetch', event => {
   // Network-first: let all requests go through normally
   event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));

@@ -13,7 +13,9 @@ function urlBase64ToUint8Array(base64: string): ArrayBuffer {
 
 export async function registerSW(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
-  return navigator.serviceWorker.register('/sw.js')
+  const reg = await navigator.serviceWorker.register('/sw.js')
+  navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload())
+  return reg
 }
 
 export async function subscribePush(ristoranteId: string): Promise<boolean> {
